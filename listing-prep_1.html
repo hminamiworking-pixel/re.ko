@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出品準備ツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f7f5;--surface:#ffffff;--surface2:#f2f2f0;--surface3:#e8e8e5;
+  --border:#e0e0dc;--border2:#d0d0cc;
+  --text:#1a1a18;--text2:#6b6b65;--text3:#aaa9a0;
+  --green:#2d7d4f;--red:#c42b2b;--purple:#5a3fa0;
+  --radius:8px;--radius2:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;}
+.nav-brand{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;letter-spacing:.12em;color:var(--text);text-transform:uppercase;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.api-status{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;}
+.api-status.set{background:#dcfce7;color:#166534;}
+.api-status.unset{background:#fef3c7;color:#92400e;}
+.btn-api-setting{background:none;border:1px solid var(--border2);color:var(--text2);font-size:11px;padding:4px 12px;border-radius:var(--radius);cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+.btn-api-setting:hover{color:var(--text);border-color:var(--text);}
+
+.wrap{padding:24px;max-width:900px;margin:0 auto;padding-bottom:64px;}
+
+.howto{background:#f0f0fe;border:1px solid #c7c7f5;border-radius:var(--radius2);padding:16px 20px;margin-bottom:20px;}
+.howto-title{font-size:12px;font-weight:600;color:var(--purple);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase;}
+.howto-steps{display:flex;flex-direction:column;gap:6px;}
+.howto-step{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#3a3060;}
+.howto-num{background:var(--purple);color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius2);width:94%;max-width:480px;padding:24px;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-head h3{font-size:14px;font-weight:600;}
+.modal-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px;line-height:1;}
+.modal p{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.7;}
+.modal a{color:var(--purple);}
+.modal input{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;outline:none;color:var(--text);background:var(--surface);}
+.modal input:focus{border-color:var(--text);}
+.modal-btns{display:flex;gap:10px;margin-top:16px;}
+.btn-save-api{background:var(--purple);color:#fff;border:none;padding:9px 20px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+.btn-save-api:hover{opacity:.85;}
+.btn-cancel{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:9px 16px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:20px;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';width:3px;height:14px;background:var(--text);border-radius:2px;}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:11px;color:var(--text2);font-weight:500;letter-spacing:.02em;}
+.field input,.field select,.field textarea{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--text);box-shadow:0 0 0 3px rgba(26,26,24,.08);}
+.field input[readonly]{background:var(--surface2);color:var(--text2);cursor:default;}
+.field textarea{resize:vertical;min-height:72px;}
+.calc-info{font-size:10px;color:var(--text3);margin-top:2px;}
+.ai-hint{font-size:10px;color:var(--purple);margin-top:2px;}
+
+.btn{padding:9px 18px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:500;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+.btn-ai{background:var(--purple);color:#fff;}
+.btn-ai:hover{opacity:.85;}
+.btn-ai:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{color:var(--text);}
+.btn-copy{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:5px 12px;font-size:11px;white-space:nowrap;border-radius:var(--radius);cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+.btn-copy:hover{color:var(--text);}
+.btn-copy.ok{background:#dcfce7;color:#166534;border-color:#bbf7d0;}
+
+.btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px;}
+.status-msg{font-size:12px;color:var(--text2);}
+.status-msg.ok{color:var(--green);}
+.status-msg.err{color:var(--red);}
+
+.upload-area{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:18px;text-align:center;cursor:pointer;position:relative;transition:border-color .15s;}
+.upload-area:hover{border-color:var(--text);}
+.upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-area p{font-size:12px;color:var(--text3);}
+.photo-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.photo-gallery img{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--border);}
+
+.copy-row{display:flex;align-items:flex-start;gap:8px;}
+.copy-row .field{flex:1;}
+.copy-row .btn-copy{margin-top:20px;}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+
+.save-bar{background:var(--surface);border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;padding:12px 24px;display:flex;align-items:center;z-index:50;}
+.save-bar-label{font-size:11px;color:var(--text3);}
+.save-bar-label span{color:var(--green);font-weight:500;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">出品準備ツール</span>
+  <div class="nav-right">
+    <span class="api-status unset" id="apiStatus">APIキー未設定</span>
+    <button class="btn-api-setting" onclick="openApiModal()">APIキー設定</button>
+  </div>
+</nav>
+
+<div class="overlay" id="apiOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Anthropic APIキー設定</h3>
+      <button class="modal-close" onclick="closeApiModal()">×</button>
+    </div>
+    <p>AI自動入力を使うには Anthropic の APIキーが必要です。キーはこのブラウザ内にのみ保存され、外部には送信されません。</p>
+    <p>APIキーの取得：<a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></p>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="modal-btns">
+      <button class="btn-save-api" onclick="saveApiKey()">保存</button>
+      <button class="btn-cancel" onclick="closeApiModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="howto">
+    <div class="howto-title">使い方</div>
+    <div class="howto-steps">
+      <div class="howto-step"><div class="howto-num">1</div><div>右上の「APIキー設定」から Anthropic APIキーを入力して保存（初回のみ）</div></div>
+      <div class="howto-step"><div class="howto-num">2</div><div>リペア情報を入力し、出品用写真をアップロード</div></div>
+      <div class="howto-step"><div class="howto-num">3</div><div>「AIで自動入力」ボタンでタイトル・説明文・価格帯を一括生成</div></div>
+      <div class="howto-step"><div class="howto-num">4</div><div>各フィールド右の「コピー」ボタンでそのままプラットフォームに貼り付け</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">リペア情報</div>
+    <div class="grid">
+      <div class="field"><label>リペアレベル</label><input type="text" id="e_repairLevel" oninput="autosave()"></div>
+      <div class="field"><label>リペア箇所</label><input type="text" id="e_repairPart" oninput="autosave()"></div>
+      <div class="field full"><label>リペア内容メモ</label><textarea id="e_repairMemo" placeholder="リペアの詳細メモ（出品用文章はAIが後で生成）" oninput="autosave()"></textarea></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">出品用写真・AI自動入力</div>
+    <div class="photo-gallery" id="e_listingPhotos"></div>
+    <div class="upload-area">
+      <input type="file" id="e_listingPhotoInput" accept="image/*" multiple onchange="handlePhotos(event)">
+      <p>出品用写真をアップロード（リペア後）</p>
+    </div>
+    <div class="grid" style="margin-top:14px;">
+      <div class="field full">
+        <label>リペア内容（AI入力前に記入）</label>
+        <input type="text" id="e_repairInputAI" placeholder="例：クリーニング コバ補修 一部補色" oninput="autosave()">
+        <span class="ai-hint">※ AI自動入力時に使用されます</span>
+      </div>
+      <div class="field full">
+        <label>気になる状態（AI入力前に記入）</label>
+        <input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり" oninput="autosave()">
+        <span class="ai-hint">※ AI自動入力時に使用されます</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()" disabled>AIで自動入力</button>
+      <span class="status-msg" id="e_aiStatus"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">出品情報</div>
+    <div class="grid">
+      <div class="field">
+        <label>販売チャンネル</label>
+        <select id="e_salesChannel" onchange="autosave()">
+          <option value="">選択</option>
+          <option>メルカリshops</option><option>ラクマ</option><option>ゼンプラス</option>
+          <option>メルカリ</option><option>メルカリオークション</option><option>BASE</option>
+        </select>
+      </div>
+      <div class="field"><label>出品日</label><input type="date" id="e_listingDate" onchange="autosave()"></div>
+      <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" oninput="calcPrices();autosave()"></div>
+      <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" oninput="calcPrices();autosave()"></div>
+      <div class="field"><label>中央値（自動）</label><input type="number" id="e_priceMid" readonly><span class="calc-info">＝（上振れ＋下振れ）÷ 2</span></div>
+      <div class="field"><label>上振れ中央値（自動）</label><input type="number" id="e_priceHighMid" readonly><span class="calc-info">＝（上振れ＋中央値）÷ 2</span></div>
+      <div class="field"><label>下振れ中央値（自動）</label><input type="number" id="e_priceLowMid" readonly><span class="calc-info">＝（下振れ＋中央値）÷ 2</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="copy-row"><div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成" oninput="autosave()"></div><button class="btn-copy" onclick="copyField('e_productTitle',this)">コピー</button></div>
+    <div style="margin-top:12px;" class="copy-row"><div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成" oninput="autosave()"></textarea></div><button class="btn-copy" onclick="copyField('e_keywords',this)">コピー</button></div>
+    <div style="margin-top:12px;" class="copy-row"><div class="field full"><label>キーワード（コピー用）</label><textarea id="e_keywordsCopy" placeholder="AIが自動生成" oninput="autosave()"></textarea></div><button class="btn-copy" onclick="copyField('e_keywordsCopy',this)">コピー</button></div>
+    <div style="margin-top:12px;" class="copy-row"><div class="field full"><label>商品文章</label><textarea id="e_productDescription" placeholder="AIが自動生成" style="min-height:100px;" oninput="autosave()"></textarea></div><button class="btn-copy" onclick="copyField('e_productDescription',this)">コピー</button></div>
+    <div style="margin-top:12px;" class="copy-row"><div class="field full"><label>リペア内容（出品用）</label><textarea id="e_repairContent" placeholder="AIが自動生成" oninput="autosave()"></textarea></div><button class="btn-copy" onclick="copyField('e_repairContent',this)">コピー</button></div>
+    <div style="margin-top:12px;" class="copy-row"><div class="field full"><label>リペア内容（詳細）</label><textarea id="e_repairDetail" placeholder="AIが自動生成" oninput="autosave()"></textarea></div><button class="btn-copy" onclick="copyField('e_repairDetail',this)">コピー</button></div>
+    <div style="margin-top:12px;" class="copy-row"><div class="field full"><label>サイズ詳細</label><textarea id="e_sizeDetail" oninput="autosave()"></textarea></div><button class="btn-copy" onclick="copyField('e_sizeDetail',this)">コピー</button></div>
+
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn btn-ghost" onclick="clearAll()">クリア</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="save-bar">
+  <div class="save-bar-label" id="saveLabel">入力内容はブラウザに自動保存されます</div>
+</div>
+
+<script>
+const STORAGE_KEY = 'listing_prep_v1';
+const API_KEY_STORAGE = 'listing_prep_apikey';
+const FIELD_IDS = [
+  'e_repairLevel','e_repairPart','e_repairMemo',
+  'e_repairInputAI','e_conditionInputAI',
+  'e_salesChannel','e_listingDate',
+  'e_priceHigh','e_priceLow','e_priceMid','e_priceHighMid','e_priceLowMid',
+  'e_productTitle','e_keywords','e_keywordsCopy',
+  'e_productDescription','e_repairContent','e_repairDetail','e_sizeDetail'
+];
+
+let listingImages = [];
+
+function getApiKey() { return localStorage.getItem(API_KEY_STORAGE) || ''; }
+
+function updateApiStatus() {
+  const key = getApiKey();
+  const el = document.getElementById('apiStatus');
+  if (key) {
+    el.textContent = 'APIキー設定済み';
+    el.className = 'api-status set';
+    if (listingImages.length) document.getElementById('e_aiBtn').disabled = false;
+  } else {
+    el.textContent = 'APIキー未設定';
+    el.className = 'api-status unset';
+    document.getElementById('e_aiBtn').disabled = true;
+  }
+}
+
+function openApiModal() {
+  document.getElementById('apiKeyInput').value = getApiKey();
+  document.getElementById('apiOverlay').classList.add('open');
+}
+function closeApiModal() { document.getElementById('apiOverlay').classList.remove('open'); }
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val) { alert('APIキーを入力してください'); return; }
+  localStorage.setItem(API_KEY_STORAGE, val);
+  updateApiStatus();
+  closeApiModal();
+}
+
+function handlePhotos(e) {
+  listingImages = [];
+  const gallery = document.getElementById('e_listingPhotos');
+  gallery.innerHTML = '';
+  Array.from(e.target.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      listingImages.push({ base64: ev.target.result.split(',')[1], type: file.type });
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      gallery.appendChild(img);
+      if (getApiKey()) document.getElementById('e_aiBtn').disabled = false;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function calcPrices() {
+  const h = Number(document.getElementById('e_priceHigh').value) || 0;
+  const l = Number(document.getElementById('e_priceLow').value) || 0;
+  if (!h || !l) return;
+  const mid = Math.round((h + l) / 2);
+  document.getElementById('e_priceMid').value = mid;
+  document.getElementById('e_priceHighMid').value = Math.round((h + mid) / 2);
+  document.getElementById('e_priceLowMid').value = Math.round((l + mid) / 2);
+}
+
+async function generateAI() {
+  const apiKey = getApiKey();
+  if (!apiKey) { openApiModal(); return; }
+  if (!listingImages.length) return;
+
+  const btn = document.getElementById('e_aiBtn');
+  const status = document.getElementById('e_aiStatus');
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'AI解析中...';
+
+  const repairInput = document.getElementById('e_repairInputAI').value;
+  const conditionInput = document.getElementById('e_conditionInputAI').value;
+  const imageContents = listingImages.map(img => ({
+    type: 'image',
+    source: { type: 'base64', media_type: img.type, data: img.base64 }
+  }));
+
+  const prompt = `あなたはハイブランド中古商品のコピーライターです。ブランド価値を保ちながらECサイトでクリック率と購入率を高める文章を作成してください。
+
+【絶対禁止ワード】安い/激安/お得/正規品/本物/鑑定済み/ギャランティ/保証/ICチップ/安心/確実/間違いない/ロゴくっきり/型番一致/人気/定番/入手困難/ギャラ付き/ラグジュアリー
+
+【情景コピーのルール】
+・ブランド名は入れない・情景が浮かぶ言葉・説明的な文章は禁止・詩的、芸術的な表現
+良い例：静かに格を纏う／品は細部に宿る／余裕は小物に出る／静かな反骨
+
+【タイトル構造】
+①情景コピー（14文字前後）を【】で囲む ②改行してSEOタイトル（ブランド名 商品形状 素材 カラー）
+例：【静かに格を纏う】\nPRADA レザー トートバッグ A4収納可 ブラック
+
+【入力情報】
+リペア内容：${repairInput || '不明'}
+気になる状態：${conditionInput || '不明'}
+
+この画像の商品を分析して、以下のJSONのみを返してください。説明・コードブロック記号は一切不要。
+
+{"brandName":"ブランド名","itemShape":"商品の形状","priceHigh":"相場上振れ価格（数値のみ）","priceLow":"相場下振れ価格（数値のみ）","productTitle":"【情景コピー14文字前後】\\nSEOタイトル40文字以内","keywords":"SEOワード7〜9個スペース区切り","keywordsCopy":"SEOワード7〜9個スペース区切り","productDescription":"200文字以内。CVR重視。禁止ワード使用不可。","repairContent":"リペア内容をポジティブに表現","repairDetail":"状態をポジティブに補足"}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: prompt }] }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.map(i => i.text || '').join('');
+    const r = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+    if (r.priceHigh) document.getElementById('e_priceHigh').value = r.priceHigh;
+    if (r.priceLow)  document.getElementById('e_priceLow').value  = r.priceLow;
+    calcPrices();
+
+    const set = (id, val) => { if (val !== undefined) document.getElementById(id).value = val; };
+    set('e_productTitle',       r.productTitle);
+    set('e_keywords',           r.keywords);
+    set('e_keywordsCopy',       r.keywordsCopy);
+    set('e_productDescription', r.productDescription);
+    set('e_repairContent',      r.repairContent);
+    set('e_repairDetail',       r.repairDetail);
+
+    autosave();
+    status.className = 'status-msg ok';
+    status.textContent = '自動入力完了';
+  } catch (err) {
+    status.className = 'status-msg err';
+    status.textContent = 'エラー: ' + (err.message || '不明');
+    console.error(err);
+  }
+  btn.disabled = false;
+}
+
+function copyField(id, btn) {
+  const val = document.getElementById(id).value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ コピー済';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 1500);
+  });
+}
+
+let saveTimer = null;
+function autosave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const data = {};
+    FIELD_IDS.forEach(id => { data[id] = document.getElementById(id).value; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const now = new Date();
+    document.getElementById('saveLabel').innerHTML =
+      `最終保存: <span>${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}</span>`;
+  }, 800);
+}
+
+function loadSaved() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.entries(data).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    });
+    calcPrices();
+  } catch(e) {}
+}
+
+function clearAll() {
+  if (!confirm('入力内容をすべてクリアしますか？')) return;
+  FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('e_listingPhotos').innerHTML = '';
+  document.getElementById('e_aiBtn').disabled = true;
+  document.getElementById('e_aiStatus').textContent = '';
+  listingImages = [];
+  localStorage.removeItem(STORAGE_KEY);
+  document.getElementById('saveLabel').textContent = '入力内容はブラウザに自動保存されます';
+}
+
+loadSaved();
+updateApiStatus();
+</script>
+</body>
+</html>
