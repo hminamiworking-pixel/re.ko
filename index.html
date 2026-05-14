@@ -477,9 +477,11 @@ tr:hover td{background:var(--surface2);}
         </div>
         <div class="field"><label>売上金額（送料なし）</label><input type="number" id="e_revenue" oninput="calcSoldProfit()"></div>
         <div class="field"><label>送料</label><input type="number" id="e_shippingCost" oninput="calcSoldProfit()"></div>
-        <div class="field"><label>利益（自動計算）</label><input type="number" id="e_profitAfterShipping" readonly><span class="calc-info">＝ 売上×(1-手数料率) − 送料 − 仕入額（円未満切捨て）</span></div>
-        <div class="field"><label>利益率</label><input type="text" id="e_profitRate" readonly></div>
-        <div class="field"><label>利益（送料除く）</label><input type="number" id="e_profitGross" readonly></div>
+        <div style="display:none;">
+          <input type="number" id="e_profitAfterShipping">
+          <input type="text" id="e_profitRate">
+          <input type="number" id="e_profitGross">
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveStage(3)">保存して売却済みにする</button>
