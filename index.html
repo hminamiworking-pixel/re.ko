@@ -454,19 +454,20 @@ tr:hover td{background:var(--surface2);}
       <div class="grid">
         <div class="field"><label>売却日</label><input type="date" id="e_soldDate"></div>
         <div class="field"><label>売却時プラットフォーム</label>
-          <select id="e_soldPlatform">
+          <select id="e_soldPlatform" onchange="calcSoldProfit()">
             <option value="">選択</option>
-            <option>メルカリ</option>
-            <option>メルカリオークション</option>
-            <option>ゼンプラス</option>
-            <option>BASE</option>
-            <option>ラクマ</option>
-            <option>ジモティ</option>
-            <option>エコリング</option>
-            <option>セカンドストリート</option>
-            <option>個人買取</option>
+            <option value="メルカリ" data-fee="10">メルカリ</option>
+            <option value="メルカリオークション" data-fee="10">メルカリオークション</option>
+            <option value="ゼンプラス" data-fee="10">ゼンプラス</option>
+            <option value="BASE" data-fee="10">BASE</option>
+            <option value="ラクマ" data-fee="4.5">ラクマ</option>
+            <option value="ジモティ" data-fee="10">ジモティ</option>
+            <option value="エコリング" data-fee="10">エコリング</option>
+            <option value="セカンドストリート" data-fee="0">セカンドストリート</option>
+            <option value="個人買取" data-fee="0">個人買取</option>
           </select>
         </div>
+        <div class="field"><label>適用手数料率</label><input type="text" id="e_feeRate" readonly placeholder="プラットフォーム選択で自動入力"></div>
         <div class="field"><label>売れ先</label>
           <select id="e_soldTo">
             <option value="">選択</option>
@@ -474,11 +475,11 @@ tr:hover td{background:var(--surface2);}
             <option>業者</option>
           </select>
         </div>
-        <div class="field"><label>売上金額（送料なし）</label><input type="number" id="e_revenue"></div>
-        <div class="field"><label>送料</label><input type="number" id="e_shippingCost"></div>
-        <div class="field"><label>利益（送料あり）</label><input type="number" id="e_profitAfterShipping"></div>
-        <div class="field"><label>利益率</label><input type="text" id="e_profitRate"></div>
-        <div class="field"><label>利益（売上〜原価）</label><input type="number" id="e_profitGross"></div>
+        <div class="field"><label>売上金額（送料なし）</label><input type="number" id="e_revenue" oninput="calcSoldProfit()"></div>
+        <div class="field"><label>送料</label><input type="number" id="e_shippingCost" oninput="calcSoldProfit()"></div>
+        <div class="field"><label>利益（自動計算）</label><input type="number" id="e_profitAfterShipping" readonly><span class="calc-info">＝ 売上×(1-手数料率) − 送料 − 仕入額（円未満切捨て）</span></div>
+        <div class="field"><label>利益率</label><input type="text" id="e_profitRate" readonly></div>
+        <div class="field"><label>利益（送料除く）</label><input type="number" id="e_profitGross" readonly></div>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveStage(3)">保存して売却済みにする</button>
@@ -944,10 +945,10 @@ async function saveStage(step,nextStep){
     const rev=Number(document.getElementById('e_revenue').value)||0;
     const ship=Number(document.getElementById('e_shippingCost').value)||0;
     const cost=currentEditData?.purchase_price||0;
-    // 手数料10%控除: 利益 = (売上 - 各種コスト) × 0.9
-    const profitWithShip = rev ? Math.round((rev - ship - cost) * 0.9) : null;
-    const profitGross    = rev ? Math.round((rev - cost) * 0.9) : null;
-    const profitRate     = rev ? Math.round((rev - cost) * 0.9 / rev * 100) + '%' : null;
+    const feeRate=getFeeRate();
+    const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;
+    const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;
+    const profitRate=rev?Math.floor(profitWithShip/rev*100)+'%':null;
     updates={
       sold_date:document.getElementById('e_soldDate').value||null,
       sold_platform:document.getElementById('e_soldPlatform').value,
@@ -963,6 +964,31 @@ async function saveStage(step,nextStep){
   const {error}=await sb.from('products').update(updates).eq('id',editingId);
   if(error){statusEl.className='status-msg err';statusEl.textContent='エラー: '+error.message;}
   else{statusEl.className='status-msg ok';statusEl.textContent='保存しました';if(nextStep)setTimeout(()=>switchStep(nextStep),600);}
+}
+
+// ==================== 売却利益自動計算 ====================
+const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'ゼンプラス':10,'BASE':10,'ジモティ':10,'エコリング':10,'ラクマ':4.5,'セカンドストリート':0,'個人買取':0};
+
+function getFeeRate(){
+  const sel=document.getElementById('e_soldPlatform');
+  const platform=sel.value;
+  return platform&&FEE_MAP[platform]!==undefined ? FEE_MAP[platform] : 10;
+}
+
+function calcSoldProfit(){
+  const rev=Number(document.getElementById('e_revenue').value)||0;
+  const ship=Number(document.getElementById('e_shippingCost').value)||0;
+  const cost=currentEditData?.purchase_price||0;
+  const feeRate=getFeeRate();
+  document.getElementById('e_feeRate').value=feeRate+'%';
+  if(!rev)return;
+  // 利益 = 売上×(1-手数料率) - 送料 - 仕入額　切り捨て
+  const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship-cost);
+  const profitGross=Math.floor(rev*(1-feeRate/100)-cost);
+  const profitRate=Math.floor(profitWithShip/rev*100);
+  document.getElementById('e_profitAfterShipping').value=profitWithShip;
+  document.getElementById('e_profitGross').value=profitGross;
+  document.getElementById('e_profitRate').value=profitRate+'%';
 }
 
 // ==================== 編集モーダル ====================
@@ -1001,7 +1027,14 @@ async function openEdit(id){
   set('e_sizeDetail',data.size_detail);
   set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);
   set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);
-  set('e_shippingCost',data.shipping_cost);set('e_profitGross',data.profit_gross);
+  set('e_shippingCost',data.shipping_cost);
+  set('e_profitAfterShipping',data.profit_after_shipping);
+  set('e_profitGross',data.profit_gross);
+  set('e_profitRate',data.profit_rate);
+  // 手数料率表示を復元
+  if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){
+    document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';
+  }
   // ステータスに応じてステップを開く
   const stepMap={'仕入れ済み':1,'出品準備中':2,'出品中':3,'売却済み':3};
   switchStep(stepMap[data.status]||1);
