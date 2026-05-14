@@ -174,7 +174,7 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="field"><label>仕入れ価格</label><input type="number" id="r_purchasePrice" placeholder="0"></div>
       <div class="field"><label>入庫時商品状態</label>
-        <select id="r_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option></select>
+        <select id="r_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select>
       </div>
       <div class="field"><label>仕入れ先</label>
         <select id="r_purchaseSource">
@@ -351,7 +351,7 @@ tr:hover td{background:var(--surface2);}
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
         <div class="field"><label>中カテゴリー</label><select id="e_subCategory"><option value="">選択</option><option>バッグ</option><option>財布</option><option>アクセサリー</option><option>衣類</option><option>シューズ</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
-        <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option></select></div>
+        <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
           <select id="e_purchaseSource"><option value="">選択</option>
             <option>(店舗)セカンドストリート</option><option>(店舗)オフハウス</option><option>(店舗)トレファク</option>
@@ -376,11 +376,23 @@ tr:hover td{background:var(--surface2);}
 
     <!-- STEP2: 出品準備（リペア含む） -->
     <div class="stage-panel" id="step2panel">
-      <div class="section-label">リペア情報</div>
-      <div class="grid">
-        <div class="field"><label>リペアレベル</label><input type="text" id="e_repairLevel"></div>
-        <div class="field"><label>リペア箇所</label><input type="text" id="e_repairPart"></div>
-        <div class="field full"><label>リペア内容メモ</label><textarea id="e_repairMemo" placeholder="リペアの詳細メモ（出品用文章はAIが後で生成）"></textarea></div>
+      <div class="section-label">リペア詳細</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:16px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_cleaning" value="清掃"><span>清掃</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_fullpaint" value="全面塗装"><span>全面塗装</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_partialpaint" value="部分塗装"><span>部分塗装</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_coba" value="コバ補修"><span>コバ補修</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_metal" value="金具のくすみ除去"><span>金具のくすみ除去</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_plating" value="メッキ加工"><span>メッキ加工</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_thread" value="糸飛び縦製補修"><span>糸飛び縦製補修</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_fabric" value="生地破れ接着"><span>生地破れ接着</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_ziphandle" value="ジップ持ち手交換"><span>ジップ持ち手交換</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_zipslider" value="ジップスライダー交換"><span>ジップスライダー交換</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_button" value="ボタン交換"><span>ボタン交換</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_initial" value="イニシャル刻印部分除去"><span>イニシャル刻印部分除去</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_stain" value="染み抜き"><span>染み抜き</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_ultrasonic" value="超音波洗浄"><span>超音波洗浄</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_none" value="無し"><span>無し</span></label>
       </div>
 
       <div class="section-label" style="margin-top:16px;">🛍 出品用写真・AI自動入力</div>
@@ -412,6 +424,7 @@ tr:hover td{background:var(--surface2);}
           </select>
         </div>
         <div class="field"><label>出品日</label><input type="date" id="e_listingDate"></div>
+        <div class="field"><label>#倉庫場所/梱包</label><input type="text" id="e_warehousePlace"></div>
         <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" oninput="calcEditPrices()"></div>
         <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" oninput="calcEditPrices()"></div>
         <div class="field"><label>中央値（自動）</label><input type="number" id="e_priceMid" readonly><span class="calc-info">＝（上振れ＋下振れ）÷ 2</span></div>
@@ -436,10 +449,6 @@ tr:hover td{background:var(--surface2);}
     <div class="stage-panel" id="step3panel">
       <div class="section-label">出品管理</div>
       <div class="grid">
-        <div class="field"><label>出品市</label><input type="text" id="e_listingMarket"></div>
-        <div class="field"><label>発送可能サイズ</label><input type="text" id="e_shippingSize"></div>
-        <div class="field"><label>#倉庫場所/梱包</label><input type="text" id="e_warehousePlace"></div>
-      </div>
 
       <div class="section-label" style="margin-top:16px;">売却情報</div>
       <div class="grid">
@@ -908,11 +917,14 @@ async function saveStage(step,nextStep){
     const ph=Number(document.getElementById('e_priceHigh').value)||null;
     const pl=Number(document.getElementById('e_priceLow').value)||null;
     const mid=ph&&pl?Math.round((ph+pl)/2):null;
+    // チェックボックスのリペア詳細を収集
+    const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
+    const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
     updates={
-      repair_level:document.getElementById('e_repairLevel').value,
-      repair_part:document.getElementById('e_repairPart').value,
+      repair_detail_checks: checkedRepairs.length ? checkedRepairs.join(',') : null,
       sales_channel:document.getElementById('e_salesChannel').value,
       listing_date:document.getElementById('e_listingDate').value||null,
+      warehouse_place:document.getElementById('e_warehousePlace').value,
       price_high:ph,price_low:pl,price_mid:mid,
       price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,
       price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,
@@ -937,9 +949,6 @@ async function saveStage(step,nextStep){
     const profitGross    = rev ? Math.round((rev - cost) * 0.9) : null;
     const profitRate     = rev ? Math.round((rev - cost) * 0.9 / rev * 100) + '%' : null;
     updates={
-      listing_market:document.getElementById('e_listingMarket').value,
-      shipping_size:document.getElementById('e_shippingSize').value,
-      warehouse_place:document.getElementById('e_warehousePlace').value,
       sold_date:document.getElementById('e_soldDate').value||null,
       sold_platform:document.getElementById('e_soldPlatform').value,
       sold_to:document.getElementById('e_soldTo').value,
@@ -978,16 +987,18 @@ async function openEdit(id){
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_itemShape',data.item_shape);
-  set('e_repairLevel',data.repair_level);set('e_repairPart',data.repair_part);
   set('e_salesChannel',data.sales_channel);set('e_listingDate',data.listing_date);
+  set('e_warehousePlace',data.warehouse_place);
+  // リペアチェックボックス復元
+  const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
+  const savedChecks=(data.repair_detail_checks||'').split(',');
+  repairIds.forEach(id=>{const el=document.getElementById(id);if(el)el.checked=savedChecks.includes(el.value);});
   set('e_priceHigh',data.price_high);set('e_priceLow',data.price_low);
   set('e_priceMid',data.price_mid);set('e_priceHighMid',data.price_high_mid);set('e_priceLowMid',data.price_low_mid);
   set('e_productTitle',data.product_title);set('e_keywords',data.keywords);
   set('e_keywordsCopy',data.keywords_copy);set('e_productDescription',data.product_description);
   set('e_repairContent',data.repair_content);set('e_repairDetail',data.repair_detail);
   set('e_sizeDetail',data.size_detail);
-  set('e_listingMarket',data.listing_market);set('e_shippingSize',data.shipping_size);
-  set('e_warehousePlace',data.warehouse_place);
   set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);
   set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);
   set('e_shippingCost',data.shipping_cost);set('e_profitGross',data.profit_gross);
