@@ -508,7 +508,43 @@ tr:hover td{background:var(--surface2);}
           </select>
         </div>
         <div class="field"><label>売上金額（送料なし）</label><input type="number" id="e_revenue" oninput="calcSoldProfit()"></div>
-        <div class="field"><label>送料</label><input type="number" id="e_shippingCost" oninput="calcSoldProfit()"></div>
+        <!-- 送料自動計算 -->
+        <div class="field"><label>配送会社</label>
+          <select id="e_carrier" onchange="onCarrierChange()">
+            <option value="">選択</option>
+            <option value="yamato">ヤマト運輸</option>
+            <option value="sagawa">佐川急便</option>
+            <option value="yamato_neko">ヤマト ネコポス（220円固定）</option>
+            <option value="manual">手動入力</option>
+          </select>
+        </div>
+        <div class="field" id="e_sizeField" style="display:none;"><label>サイズ</label>
+          <select id="e_shipSize" onchange="calcShipping()">
+            <option value="">選択</option>
+            <option value="60">60サイズ</option>
+            <option value="80">80サイズ</option>
+            <option value="100">100サイズ</option>
+          </select>
+        </div>
+        <div class="field" id="e_regionField" style="display:none;"><label>送り先地域</label>
+          <select id="e_shipRegion" onchange="calcShipping()">
+            <option value="">選択</option>
+            <option value="hokkaido">北海道</option>
+            <option value="kitatohoku">北東北（青森・岩手・秋田）</option>
+            <option value="minamitohoku">南東北（宮城・山形・福島）</option>
+            <option value="kanto">関東（茨城・栃木・群馬・埼玉・千葉・東京・神奈川・山梨）</option>
+            <option value="shinetsu">信越（新潟・長野）</option>
+            <option value="hokuriku">北陸（富山・石川・福井）</option>
+            <option value="chubu">中部（岐阜・静岡・愛知・三重）</option>
+            <option value="kansai">関西（滋賀・京都・大阪・兵庫・奈良・和歌山）</option>
+            <option value="chugoku">中国（鳥取・島根・岡山・広島・山口）</option>
+            <option value="shikoku">四国（徳島・香川・愛媛・高知）</option>
+            <option value="kitakyushu">北九州（福岡・佐賀・長崎・大分）</option>
+            <option value="minamikyushu">南九州（熊本・宮崎・鹿児島）</option>
+            <option value="okinawa">沖縄</option>
+          </select>
+        </div>
+        <div class="field"><label>送料</label><input type="number" id="e_shippingCost" oninput="calcSoldProfit()" placeholder="自動入力 or 手動"></div>
         <div style="display:none;">
           <input type="number" id="e_profitAfterShipping">
           <input type="text" id="e_profitRate">
@@ -1000,6 +1036,56 @@ async function saveStage(step,nextStep){
   else{statusEl.className='status-msg ok';statusEl.textContent='保存しました';if(nextStep)setTimeout(()=>switchStep(nextStep),600);}
 }
 
+// ==================== 運賃テーブル（発送元：岐阜＝中部）====================
+// ヤマト運輸（中部発）
+const YAMATO={
+  60: {hokkaido:990,kitatohoku:704,minamitohoku:638,kanto:550,shinetsu:550,hokuriku:550,chubu:550,kansai:550,chugoku:550,shikoku:550,kitakyushu:550,minamikyushu:550,okinawa:1452},
+  80: {hokkaido:1078,kitatohoku:814,minamitohoku:814,kanto:748,shinetsu:748,hokuriku:748,chubu:748,kansai:748,chugoku:748,shikoku:748,kitakyushu:748,minamikyushu:748,okinawa:2068},
+  100:{hokkaido:1232,kitatohoku:913,minamitohoku:869,kanto:803,shinetsu:803,hokuriku:803,chubu:803,kansai:803,chugoku:803,shikoku:803,kitakyushu:803,minamikyushu:803,okinawa:2706},
+};
+// 佐川急便（東海＝岐阜発）
+const SAGAWA={
+  60: {hokkaido:900,kitatohoku:640,minamitohoku:580,kanto:500,shinetsu:500,hokuriku:500,chubu:500,kansai:500,chugoku:580,shikoku:580,kitakyushu:640,minamikyushu:640,okinawa:900},
+  80: {hokkaido:980,kitatohoku:740,minamitohoku:710,kanto:680,shinetsu:680,hokuriku:680,chubu:680,kansai:680,chugoku:710,shikoku:710,kitakyushu:740,minamikyushu:740,okinawa:980},
+  100:{hokkaido:1120,kitatohoku:830,minamitohoku:790,kanto:730,shinetsu:730,hokuriku:730,chubu:730,kansai:730,chugoku:790,shikoku:790,kitakyushu:830,minamikyushu:830,okinawa:1120},
+};
+
+function onCarrierChange(){
+  const carrier=document.getElementById('e_carrier').value;
+  const sizeField=document.getElementById('e_sizeField');
+  const regionField=document.getElementById('e_regionField');
+  if(carrier==='yamato_neko'){
+    sizeField.style.display='none';
+    regionField.style.display='none';
+    document.getElementById('e_shippingCost').value=220;
+    calcSoldProfit();
+  } else if(carrier==='manual'){
+    sizeField.style.display='none';
+    regionField.style.display='none';
+    document.getElementById('e_shippingCost').value='';
+  } else if(carrier==='yamato'||carrier==='sagawa'){
+    sizeField.style.display='flex';
+    regionField.style.display='flex';
+    calcShipping();
+  } else {
+    sizeField.style.display='none';
+    regionField.style.display='none';
+  }
+}
+
+function calcShipping(){
+  const carrier=document.getElementById('e_carrier').value;
+  const size=Number(document.getElementById('e_shipSize').value);
+  const region=document.getElementById('e_shipRegion').value;
+  if(!carrier||!size||!region)return;
+  const table=carrier==='yamato'?YAMATO:SAGAWA;
+  const rate=table[size]?.[region];
+  if(rate){
+    document.getElementById('e_shippingCost').value=rate;
+    calcSoldProfit();
+  }
+}
+
 // ==================== 売却利益自動計算 ====================
 const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'ゼンプラス':10,'BASE':10,'ジモティ':0,'エコリング':0,'ラクマ':4.5,'セカンドストリート':0,'個人買取':0};
 
@@ -1052,7 +1138,7 @@ async function openEdit(id){
   // リペアチェックボックス復元
   const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   const savedChecks=(data.repair_detail_checks||'').split(',');
-  repairIds.forEach(id=>{const el=document.getElementById(id);if(el)el.checked=savedChecks.includes(el.value);});
+  repairIds.forEach(repId=>{const el=document.getElementById(repId);if(el)el.checked=savedChecks.includes(el.value);});
   set('e_priceHigh',data.price_high);set('e_priceLow',data.price_low);
   set('e_priceMid',data.price_mid);set('e_priceHighMid',data.price_high_mid);set('e_priceLowMid',data.price_low_mid);
   set('e_productTitle',data.product_title);set('e_keywords',data.keywords);
