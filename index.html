@@ -1001,7 +1001,7 @@ async function saveStage(step,nextStep){
 }
 
 // ==================== 売却利益自動計算 ====================
-const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'ゼンプラス':10,'BASE':10,'ジモティ':10,'エコリング':10,'ラクマ':4.5,'セカンドストリート':0,'個人買取':0};
+const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'ゼンプラス':10,'BASE':10,'ジモティ':0,'エコリング':0,'ラクマ':4.5,'セカンドストリート':0,'個人買取':0};
 
 function getFeeRate(){
   const sel=document.getElementById('e_soldPlatform');
