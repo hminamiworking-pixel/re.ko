@@ -479,10 +479,7 @@ tr:hover td{background:var(--surface2);}
 
     <!-- STEP3: 出品（売却情報） -->
     <div class="stage-panel" id="step3panel">
-      <div class="section-label">出品管理</div>
-      <div class="grid">
-
-      <div class="section-label" style="margin-top:16px;">売却情報</div>
+      <div class="section-label">売却情報</div>
       <div class="grid">
         <div class="field"><label>売却日</label><input type="date" id="e_soldDate"></div>
         <div class="field"><label>売却時プラットフォーム</label>
@@ -860,11 +857,23 @@ function handleEditPhotos(e,type){
   Array.from(e.target.files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=ev=>{
-      images.push({base64:ev.target.result.split(',')[1],type:file.type,dataUrl:ev.target.result});
-      const img=document.createElement('img');img.src=ev.target.result;
-      document.getElementById(galleryId).appendChild(img);
-      if(type==='listing'){editListingImages=images;document.getElementById('e_aiBtn').disabled=false;}
-      else{editPurchaseImages=images;}
+      // 画像を圧縮してからbase64化
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const MAX=1024;
+        let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const compressed=canvas.toDataURL('image/jpeg',0.7);
+        images.push({base64:compressed.split(',')[1],type:'image/jpeg',dataUrl:compressed});
+        const imgEl=document.createElement('img');imgEl.src=compressed;
+        document.getElementById(galleryId).appendChild(imgEl);
+        if(type==='listing'){editListingImages=images;document.getElementById('e_aiBtn').disabled=false;}
+        else{editPurchaseImages=images;}
+      };
+      img.src=ev.target.result;
     };
     reader.readAsDataURL(file);
   });
@@ -878,7 +887,7 @@ async function generateAI(){
   btn.disabled=true;status.className='status-msg';status.textContent='AI解析中...';
   const repairInput=document.getElementById('e_repairInputAI').value;
   const conditionInput=document.getElementById('e_conditionInputAI').value;
-  const imageContents=editListingImages.map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}}));
+  const imageContents=editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}}));
   const prompt=`あなたはハイブランド中古商品のコピーライターです。ブランド価値を保ちながらECサイトでクリック率と購入率を高める文章を作成してください。
 
 【絶対禁止ワード】安い/激安/お得/正規品/本物/鑑定済み/ギャランティ/保証/ICチップ/安心/確実/間違いない/ロゴくっきり/型番一致/人気/定番/入手困難/ギャラ付き/ラグジュアリー
