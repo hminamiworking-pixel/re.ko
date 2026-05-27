@@ -13,7 +13,7 @@
   --border:#e0e0dc;--border2:#d0d0cc;
   --text:#1a1a18;--text2:#6b6b65;--text3:#aaa9a0;
   --accent:#1a1a18;--green:#2d7d4f;--orange:#c85d1a;--red:#c42b2b;--blue:#1a4d8f;
-  --purple:#5a3fa0;
+  --purple:#5a3fa0;--teal:#0e7490;
   --radius:8px;--radius2:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -47,6 +47,9 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .btn-ai{background:var(--purple);color:#fff;}
 .btn-ai:hover{opacity:.85;}
 .btn-ai:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
+.btn-trend{background:var(--teal);color:#fff;}
+.btn-trend:hover{opacity:.85;}
+.btn-trend:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
 .btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);}
 .btn-ghost:hover{color:var(--text);}
 .btn-next{background:var(--green);color:#fff;}
@@ -95,6 +98,67 @@ tr:hover td{background:var(--surface2);}
 .step-item.done{color:var(--green);font-weight:600;}
 .stage-panel{display:none;}
 .stage-panel.active{display:block;}
+
+/* ===== TREND PANEL ===== */
+.trend-panel{
+  background:linear-gradient(135deg,rgba(14,116,144,0.06) 0%,rgba(14,116,144,0.02) 100%);
+  border:1px solid rgba(14,116,144,0.25);
+  border-radius:var(--radius2);
+  padding:16px;
+  margin-bottom:16px;
+}
+.trend-panel-head{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+}
+.trend-panel-head span{
+  font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);
+}
+.trend-loading{
+  display:flex;align-items:center;gap:8px;padding:12px 0;
+  font-size:12px;color:var(--teal);
+}
+.trend-loading-dots{display:inline-flex;gap:3px;}
+.trend-loading-dots span{
+  width:5px;height:5px;border-radius:50%;background:var(--teal);
+  animation:trendDot 1.2s infinite ease-in-out;
+}
+.trend-loading-dots span:nth-child(2){animation-delay:.2s;}
+.trend-loading-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes trendDot{0%,80%,100%{opacity:.2;transform:scale(.8);}40%{opacity:1;transform:scale(1);}}
+.trend-section{margin-bottom:14px;}
+.trend-section-title{
+  font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:8px;
+}
+.trend-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.trend-tag{
+  padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;
+  background:rgba(14,116,144,0.1);color:var(--teal);border:1px solid rgba(14,116,144,0.2);
+  cursor:pointer;transition:all .15s;
+}
+.trend-tag:hover{background:rgba(14,116,144,0.2);}
+.trend-tag.hot{
+  background:rgba(200,93,26,0.1);color:var(--orange);border-color:rgba(200,93,26,0.25);
+}
+.trend-tag.hot:hover{background:rgba(200,93,26,0.2);}
+.trend-price-row{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;
+}
+.trend-price-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:10px 12px;text-align:center;
+}
+.trend-price-card .label{font-size:10px;color:var(--text3);margin-bottom:3px;}
+.trend-price-card .value{font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);}
+.trend-summary{
+  font-size:12px;color:var(--text2);line-height:1.7;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px;
+}
+.trend-empty{
+  font-size:12px;color:var(--text3);text-align:center;padding:16px 0;
+}
+.trend-insert-hint{font-size:10px;color:var(--teal);margin-top:4px;}
 
 /* ===== SPREADSHEET TABLE ===== */
 .ss-wrap{overflow-x:auto;font-size:12px;}
@@ -152,7 +216,6 @@ tr:hover td{background:var(--surface2);}
   </div>
   <div class="card">
     <div class="card-title">最近の商品</div>
-    <!-- フィルター -->
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
       <input type="text" id="f_brand" placeholder="ブランド" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:130px;outline:none;">
       <input type="text" id="f_shape" placeholder="形状" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:110px;outline:none;">
@@ -249,7 +312,6 @@ tr:hover td{background:var(--surface2);}
 
     <!-- SHEET VIEW -->
     <div id="salesSheetView">
-      <!-- フィルター -->
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
         <select id="sf_year" onchange="applySheetFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
           <option value="">年：全て</option>
@@ -291,14 +353,11 @@ tr:hover td{background:var(--surface2);}
 
     <!-- CHART VIEW -->
     <div id="salesChartView" style="display:none;">
-      <!-- 年セレクト -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
         <label style="font-size:12px;color:var(--text2);">対象年：</label>
         <select id="chartYearSelect" style="padding:5px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;" onchange="redrawAllCharts()"></select>
         <span style="font-size:11px;color:var(--text3);margin-left:4px;">当月グラフは現在の月を自動使用</span>
       </div>
-
-      <!-- 棒グラフセクション -->
       <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">棒グラフ（月別）</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
@@ -318,8 +377,6 @@ tr:hover td{background:var(--surface2);}
           <div style="position:relative;height:220px;"><canvas id="chartAvgSale"></canvas></div>
         </div>
       </div>
-
-      <!-- 円グラフセクション -->
       <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">円グラフ</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
@@ -370,7 +427,7 @@ tr:hover td{background:var(--surface2);}
       <div class="step-item" id="step3tab" onclick="switchStep(3)">③ 出品</div>
     </div>
 
-    <!-- STEP1: 仕入れ -->
+    <!-- STEP1 -->
     <div class="stage-panel active" id="step1panel">
       <div class="section-label">仕入れ情報</div>
       <div class="section-label">📦 仕入れ時写真</div>
@@ -406,8 +463,47 @@ tr:hover td{background:var(--surface2);}
       </div>
     </div>
 
-    <!-- STEP2: 出品準備（リペア含む） -->
+    <!-- STEP2: 出品準備 -->
     <div class="stage-panel" id="step2panel">
+
+      <!-- ===== TREND SEARCH PANEL ===== -->
+      <div class="trend-panel" id="trendPanel">
+        <div class="trend-panel-head">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--teal)"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          <span>トレンド検索</span>
+          <span id="trendBrandLabel" style="font-size:11px;color:var(--text2);font-weight:400;margin-left:4px;"></span>
+        </div>
+
+        <!-- 未検索状態 -->
+        <div id="trendEmpty" class="trend-empty">
+          ブランド名・形状を入力して「トレンド検索」を押してください
+        </div>
+
+        <!-- ローディング -->
+        <div id="trendLoading" class="trend-loading" style="display:none;">
+          <div class="trend-loading-dots"><span></span><span></span><span></span></div>
+          <span>メルカリ・ラクマのトレンドを取得中...</span>
+        </div>
+
+        <!-- 結果 -->
+        <div id="trendResult" style="display:none;">
+          <div class="trend-section">
+            <div class="trend-section-title">🔥 注目キーワード（クリックで追加）</div>
+            <div class="trend-tags" id="trendHotTags"></div>
+          </div>
+          <div class="trend-section">
+            <div class="trend-section-title">💴 相場帯</div>
+            <div class="trend-price-row" id="trendPriceRow"></div>
+          </div>
+          <div class="trend-section">
+            <div class="trend-section-title">📊 トレンドサマリー</div>
+            <div class="trend-summary" id="trendSummary"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px;" id="trendUpdatedAt"></div>
+        </div>
+      </div>
+      <!-- ===== /TREND SEARCH PANEL ===== -->
+
       <div class="section-label">リペア詳細</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:16px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_cleaning" value="清掃"><span>清掃</span></label>
@@ -438,6 +534,7 @@ tr:hover td{background:var(--surface2);}
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
+        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">🔍 トレンド検索</button>
         <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()" disabled>AIで自動入力</button>
         <span class="status-msg" id="e_aiStatus"></span>
       </div>
@@ -447,12 +544,8 @@ tr:hover td{background:var(--surface2);}
         <div class="field"><label>販売チャンネル</label>
           <select id="e_salesChannel">
             <option value="">選択</option>
-            <option>メルカリshops</option>
-            <option>ラクマ</option>
-            <option>ゼンプラス</option>
-            <option>メルカリ</option>
-            <option>メルカリオークション</option>
-            <option>BASE</option>
+            <option>メルカリshops</option><option>ラクマ</option><option>ゼンプラス</option>
+            <option>メルカリ</option><option>メルカリオークション</option><option>BASE</option>
           </select>
         </div>
         <div class="field"><label>出品日</label><input type="date" id="e_listingDate"></div>
@@ -477,7 +570,7 @@ tr:hover td{background:var(--surface2);}
       </div>
     </div>
 
-    <!-- STEP3: 出品（売却情報） -->
+    <!-- STEP3 -->
     <div class="stage-panel" id="step3panel">
       <div class="section-label">売却情報</div>
       <div class="grid">
@@ -498,14 +591,9 @@ tr:hover td{background:var(--surface2);}
         </div>
         <div class="field"><label>適用手数料率</label><input type="text" id="e_feeRate" readonly placeholder="プラットフォーム選択で自動入力"></div>
         <div class="field"><label>売れ先</label>
-          <select id="e_soldTo">
-            <option value="">選択</option>
-            <option>個人</option>
-            <option>業者</option>
-          </select>
+          <select id="e_soldTo"><option value="">選択</option><option>個人</option><option>業者</option></select>
         </div>
         <div class="field"><label>売上金額（送料なし）</label><input type="number" id="e_revenue" oninput="calcSoldProfit()"></div>
-        <!-- 送料自動計算 -->
         <div class="field"><label>配送会社</label>
           <select id="e_carrier" onchange="onCarrierChange()">
             <option value="">選択</option>
@@ -518,20 +606,16 @@ tr:hover td{background:var(--surface2);}
         <div class="field" id="e_sizeField" style="display:none;"><label>サイズ</label>
           <select id="e_shipSize" onchange="calcShipping()">
             <option value="">選択</option>
-            <option value="60">60サイズ</option>
-            <option value="80">80サイズ</option>
-            <option value="100">100サイズ</option>
+            <option value="60">60サイズ</option><option value="80">80サイズ</option><option value="100">100サイズ</option>
           </select>
         </div>
         <div class="field" id="e_regionField" style="display:none;"><label>送り先地域</label>
           <select id="e_shipRegion" onchange="calcShipping()">
             <option value="">選択</option>
-            <option value="hokkaido">北海道</option>
-            <option value="kitatohoku">北東北（青森・岩手・秋田）</option>
+            <option value="hokkaido">北海道</option><option value="kitatohoku">北東北（青森・岩手・秋田）</option>
             <option value="minamitohoku">南東北（宮城・山形・福島）</option>
             <option value="kanto">関東（茨城・栃木・群馬・埼玉・千葉・東京・神奈川・山梨）</option>
-            <option value="shinetsu">信越（新潟・長野）</option>
-            <option value="hokuriku">北陸（富山・石川・福井）</option>
+            <option value="shinetsu">信越（新潟・長野）</option><option value="hokuriku">北陸（富山・石川・福井）</option>
             <option value="chubu">中部（岐阜・静岡・愛知・三重）</option>
             <option value="kansai">関西（滋賀・京都・大阪・兵庫・奈良・和歌山）</option>
             <option value="chugoku">中国（鳥取・島根・岡山・広島・山口）</option>
@@ -609,11 +693,117 @@ function switchSalesTab(tab,btn){
   if(tab==='chart')redrawAllCharts();
 }
 
+// ==================== トレンド検索 ====================
+async function fetchTrend(){
+  const brand=document.getElementById('e_brandName').value.trim();
+  const shape=document.getElementById('e_itemShape').value.trim();
+
+  if(!brand&&!shape){
+    alert('ブランド名または形状を入力してください');
+    return;
+  }
+
+  const btn=document.getElementById('e_trendBtn');
+  btn.disabled=true;
+
+  // UI状態
+  document.getElementById('trendEmpty').style.display='none';
+  document.getElementById('trendResult').style.display='none';
+  document.getElementById('trendLoading').style.display='flex';
+  document.getElementById('trendBrandLabel').textContent=`— ${[brand,shape].filter(Boolean).join(' ')}`;
+
+  const query=`${brand} ${shape}`.trim();
+  const now=new Date();
+  const ymLabel=`${now.getFullYear()}年${now.getMonth()+1}月`;
+
+  const prompt=`あなたは日本のフリマアプリ（メルカリ・ラクマ）の中古ブランド品市場に詳しいアナリストです。
+ウェブ検索で「${query} メルカリ 売れ筋 相場 ${now.getFullYear()}」などを調べ、以下のJSONのみを返してください。説明・コードブロック記号は不要。
+
+{
+  "hotKeywords": ["キーワード1","キーワード2","キーワード3","キーワード4","キーワード5"],
+  "priceMin": 相場下限（数値のみ、円）,
+  "priceMid": 相場中央値（数値のみ、円）,
+  "priceMax": 相場上限（数値のみ、円）,
+  "summary": "120文字以内。売れ行き傾向・需要の強さ・注目ポイントを具体的に。"
+}
+
+検索クエリ：「${query} メルカリ 売れ筋 相場 2026」「${query} ラクマ 人気 トレンド」`;
+
+  try{
+    const res=await fetch(CLAUDE_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+
+    // テキストブロックを抽出
+    const text=(data.content||[]).filter(i=>i.type==='text').map(i=>i.text).join('');
+    const r=JSON.parse(text.replace(/```json|```/g,'').trim());
+
+    // ホットキーワード表示
+    const tagsEl=document.getElementById('trendHotTags');
+    tagsEl.innerHTML='';
+    (r.hotKeywords||[]).forEach((kw,i)=>{
+      const tag=document.createElement('span');
+      tag.className='trend-tag'+(i<2?' hot':'');
+      tag.textContent=kw;
+      tag.title='クリックでキーワードに追加';
+      tag.onclick=()=>appendKeyword(kw);
+      tagsEl.appendChild(tag);
+    });
+
+    // 相場表示
+    document.getElementById('trendPriceRow').innerHTML=`
+      <div class="trend-price-card"><div class="label">下限</div><div class="value">¥${(r.priceMin||0).toLocaleString()}</div></div>
+      <div class="trend-price-card"><div class="label">中央値</div><div class="value">¥${(r.priceMid||0).toLocaleString()}</div></div>
+      <div class="trend-price-card"><div class="label">上限</div><div class="value">¥${(r.priceMax||0).toLocaleString()}</div></div>
+    `;
+
+    // 相場を価格フィールドに反映（未入力の場合のみ）
+    if(r.priceMax&&!document.getElementById('e_priceHigh').value){
+      document.getElementById('e_priceHigh').value=r.priceMax;
+    }
+    if(r.priceMin&&!document.getElementById('e_priceLow').value){
+      document.getElementById('e_priceLow').value=r.priceMin;
+    }
+    if(r.priceMax||r.priceMin)calcEditPrices();
+
+    // サマリー
+    document.getElementById('trendSummary').textContent=r.summary||'データなし';
+    document.getElementById('trendUpdatedAt').textContent=`取得日時：${ymLabel} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    document.getElementById('trendLoading').style.display='none';
+    document.getElementById('trendResult').style.display='block';
+
+  }catch(err){
+    document.getElementById('trendLoading').style.display='none';
+    document.getElementById('trendEmpty').style.display='block';
+    document.getElementById('trendEmpty').textContent='取得に失敗しました。再度お試しください。';
+    console.error(err);
+  }
+  btn.disabled=false;
+}
+
+// キーワードをフィールドに追加
+function appendKeyword(kw){
+  const kwField=document.getElementById('e_keywords');
+  const kwCopyField=document.getElementById('e_keywordsCopy');
+  const existing=kwField.value.trim();
+  kwField.value=existing?existing+' '+kw:kw;
+  const existingCopy=kwCopyField.value.trim();
+  kwCopyField.value=existingCopy?existingCopy+' '+kw:kw;
+}
+
 // ==================== グラフ ====================
 let chartInstances={};
 let chartAllData=[];
 let destMode='all';
-
 const PIE_COLORS=['#1a4d8f','#2d7d4f','#c85d1a','#5a3fa0','#c42b2b','#0e7490','#92400e','#166534','#1e40af'];
 
 function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
@@ -628,9 +818,7 @@ function buildYearOptions(data){
   const current=sel.value;
   sel.innerHTML='';
   [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt=document.createElement('option');
-    opt.value=y;opt.textContent=y+'年';
-    sel.appendChild(opt);
+    const opt=document.createElement('option');opt.value=y;opt.textContent=y+'年';sel.appendChild(opt);
   });
   if(current&&[...years].includes(current))sel.value=current;
 }
@@ -643,13 +831,8 @@ function switchDestMode(mode,btn){
 }
 
 function redrawAllCharts(){
-  drawBarListingSold();
-  drawBarPurchaseTotal();
-  drawBarPurchaseStats();
-  drawBarAvgSale();
-  drawStatusPie();
-  drawPlatformMonthPie();
-  drawDestPie();
+  drawBarListingSold();drawBarPurchaseTotal();drawBarPurchaseStats();drawBarAvgSale();
+  drawStatusPie();drawPlatformMonthPie();drawDestPie();
 }
 
 function getMonthlyBase(yr){
@@ -660,10 +843,7 @@ function getMonthlyBase(yr){
       const mo=d.created_at.slice(5,7);
       if(m[mo]){m[mo].purchaseCount++;m[mo].purchaseSum+=d.purchase_price||0;if(d.purchase_price)m[mo].purchasePrices.push(d.purchase_price);}
     }
-    if(d.listing_date&&d.listing_date.startsWith(yr)){
-      const mo=d.listing_date.slice(5,7);
-      if(m[mo])m[mo].listingCount++;
-    }
+    if(d.listing_date&&d.listing_date.startsWith(yr)){const mo=d.listing_date.slice(5,7);if(m[mo])m[mo].listingCount++;}
     if(d.sold_date&&d.sold_date.startsWith(yr)){
       const mo=d.sold_date.slice(5,7);
       if(m[mo]){m[mo].soldCount++;m[mo].revenueSum+=d.revenue||0;}
@@ -672,148 +852,92 @@ function getMonthlyBase(yr){
   return m;
 }
 
-// 棒①：月別 出品数・売却数
 function drawBarListingSold(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);
-  const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
   destroyChart('chartListingSold');
   chartInstances['chartListingSold']=new Chart(document.getElementById('chartListingSold').getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
+    type:'bar',data:{labels,datasets:[
       {label:'出品数',data:Object.values(m).map(v=>v.listingCount),backgroundColor:'rgba(26,77,143,0.75)',borderRadius:3},
       {label:'売却数',data:Object.values(m).map(v=>v.soldCount),backgroundColor:'rgba(45,125,79,0.75)',borderRadius:3},
-    ]},
-    options:barOpts(v=>v+'点')
+    ]},options:barOpts(v=>v+'点')
   });
 }
-
-// 棒②：月別 仕入れ合計
 function drawBarPurchaseTotal(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);
-  const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
   destroyChart('chartPurchaseTotal');
   chartInstances['chartPurchaseTotal']=new Chart(document.getElementById('chartPurchaseTotal').getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'仕入れ合計',data:Object.values(m).map(v=>v.purchaseSum),backgroundColor:'rgba(90,63,160,0.75)',borderRadius:3},
-    ]},
+    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:Object.values(m).map(v=>v.purchaseSum),backgroundColor:'rgba(90,63,160,0.75)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
-
-// 棒③：月別 仕入れ（平均・最大・最小）
 function drawBarPurchaseStats(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);
-  const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
   destroyChart('chartPurchaseStats');
   chartInstances['chartPurchaseStats']=new Chart(document.getElementById('chartPurchaseStats').getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
+    type:'bar',data:{labels,datasets:[
       {label:'平均',data:Object.values(m).map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:'rgba(26,77,143,0.75)',borderRadius:3},
       {label:'最大',data:Object.values(m).map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:'rgba(196,43,43,0.6)',borderRadius:3},
       {label:'最小',data:Object.values(m).map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:'rgba(45,125,79,0.6)',borderRadius:3},
-    ]},
-    options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
+    ]},options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
-
-// 棒④：月別 平均売却金額
 function drawBarAvgSale(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);
-  const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
   destroyChart('chartAvgSale');
   chartInstances['chartAvgSale']=new Chart(document.getElementById('chartAvgSale').getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'平均売却金額',data:Object.values(m).map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(200,93,26,0.75)',borderRadius:3},
-    ]},
+    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:Object.values(m).map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(200,93,26,0.75)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
-
-// 円①：当月 ステータス別
 function drawStatusPie(){
-  const now=new Date();
-  const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const now=new Date();const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('chartCurrentMonthLabel').textContent=`${now.getFullYear()}年${now.getMonth()+1}月`;
   const counts={};
-  chartAllData.forEach(d=>{
-    const cd=(d.created_at||'').slice(0,7);
-    if(cd===yrmo){const s=d.status||'不明';counts[s]=(counts[s]||0)+1;}
-  });
+  chartAllData.forEach(d=>{const cd=(d.created_at||'').slice(0,7);if(cd===yrmo){const s=d.status||'不明';counts[s]=(counts[s]||0)+1;}});
   const labels=Object.keys(counts);const vals=Object.values(counts);
   destroyChart('chartStatusPie');
-  if(!vals.length){document.getElementById('chartStatusPie').getContext('2d').clearRect(0,0,300,200);return;}
+  if(!vals.length)return;
   chartInstances['chartStatusPie']=new Chart(document.getElementById('chartStatusPie').getContext('2d'),{
-    type:'doughnut',
-    data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},
-    options:pieOpts()
+    type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},options:pieOpts()
   });
 }
-
-// 円②：当月 売却プラットフォーム
 function drawPlatformMonthPie(){
-  const now=new Date();
-  const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const now=new Date();const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('chartCurrentMonthLabel2').textContent=`${now.getFullYear()}年${now.getMonth()+1}月`;
   const counts={};
-  chartAllData.filter(d=>d.sold_date&&d.sold_date.startsWith(yrmo)).forEach(d=>{
-    const p=d.sold_platform||'不明';counts[p]=(counts[p]||0)+1;
-  });
+  chartAllData.filter(d=>d.sold_date&&d.sold_date.startsWith(yrmo)).forEach(d=>{const p=d.sold_platform||'不明';counts[p]=(counts[p]||0)+1;});
   const labels=Object.keys(counts);const vals=Object.values(counts);
   destroyChart('chartPlatformMonthPie');
-  if(!vals.length){document.getElementById('chartPlatformMonthPie').getContext('2d').clearRect(0,0,300,200);return;}
+  if(!vals.length)return;
   chartInstances['chartPlatformMonthPie']=new Chart(document.getElementById('chartPlatformMonthPie').getContext('2d'),{
-    type:'doughnut',
-    data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},
-    options:pieOpts()
+    type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},options:pieOpts()
   });
 }
-
-// 円③：売却先（個人・業者） 全期間 or 当月
 function drawDestPie(){
-  const now=new Date();
-  const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const now=new Date();const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   let target=chartAllData.filter(d=>d.sold_date);
   if(destMode==='month')target=target.filter(d=>d.sold_date.startsWith(yrmo));
   const counts={};
   target.forEach(d=>{const t=d.sold_to||'不明';counts[t]=(counts[t]||0)+1;});
   const labels=Object.keys(counts);const vals=Object.values(counts);
   destroyChart('chartDestPie');
-  if(!vals.length){document.getElementById('chartDestPie').getContext('2d').clearRect(0,0,300,200);return;}
+  if(!vals.length)return;
   chartInstances['chartDestPie']=new Chart(document.getElementById('chartDestPie').getContext('2d'),{
-    type:'doughnut',
-    data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},
-    options:pieOpts()
+    type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},options:pieOpts()
   });
 }
-
-// 共通オプション
 function barOpts(tickCb){
-  return{
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${tickCb(c.parsed.y)}`}}},
-    scales:{
-      x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{font:{size:10},color:'#6b6b65'}},
-      y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#6b6b65',callback:tickCb}}
-    }
-  };
+  return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${tickCb(c.parsed.y)}`}}},scales:{x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{font:{size:10},color:'#6b6b65'}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#6b6b65',callback:tickCb}}}};
 }
 function pieOpts(){
-  return{
-    responsive:true,maintainAspectRatio:false,
-    plugins:{
-      legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},
-      tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}点 (${Math.round(c.parsed/c.dataset.data.reduce((a,b)=>a+b,0)*100)}%)`}}
-    }
-  };
+  return{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed}点 (${Math.round(c.parsed/c.dataset.data.reduce((a,b)=>a+b,0)*100)}%)`}}}};
 }
 
-// ==================== ステップ切り替え（3段階）====================
+// ==================== ステップ切り替え ====================
 function switchStep(n){
   for(let i=1;i<=3;i++){
     document.getElementById(`step${i}panel`).classList.toggle('active',i===n);
@@ -837,16 +961,10 @@ function calcEditPrices(){
 
 // ==================== 写真処理 ====================
 function handleRegisterPhotos(e){
-  registerImages=[];
-  document.getElementById('r_previews').innerHTML='';
+  registerImages=[];document.getElementById('r_previews').innerHTML='';
   Array.from(e.target.files).forEach(file=>{
     const reader=new FileReader();
-    reader.onload=ev=>{
-      registerImages.push(ev.target.result);
-      const img=document.createElement('img');
-      img.src=ev.target.result;img.className='preview-img';
-      document.getElementById('r_previews').appendChild(img);
-    };
+    reader.onload=ev=>{registerImages.push(ev.target.result);const img=document.createElement('img');img.src=ev.target.result;img.className='preview-img';document.getElementById('r_previews').appendChild(img);};
     reader.readAsDataURL(file);
   });
 }
@@ -857,19 +975,14 @@ function handleEditPhotos(e,type){
   Array.from(e.target.files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=ev=>{
-      // 画像を圧縮してからbase64化
       const img=new Image();
       img.onload=()=>{
-        const canvas=document.createElement('canvas');
-        const MAX=1024;
-        let w=img.width,h=img.height;
+        const canvas=document.createElement('canvas');const MAX=1024;let w=img.width,h=img.height;
         if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-        canvas.width=w;canvas.height=h;
-        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);
         const compressed=canvas.toDataURL('image/jpeg',0.7);
         images.push({base64:compressed.split(',')[1],type:'image/jpeg',dataUrl:compressed});
-        const imgEl=document.createElement('img');imgEl.src=compressed;
-        document.getElementById(galleryId).appendChild(imgEl);
+        const imgEl=document.createElement('img');imgEl.src=compressed;document.getElementById(galleryId).appendChild(imgEl);
         if(type==='listing'){editListingImages=images;document.getElementById('e_aiBtn').disabled=false;}
         else{editPurchaseImages=images;}
       };
@@ -882,8 +995,7 @@ function handleEditPhotos(e,type){
 // ==================== AI自動入力 ====================
 async function generateAI(){
   if(!editListingImages.length)return;
-  const btn=document.getElementById('e_aiBtn');
-  const status=document.getElementById('e_aiStatus');
+  const btn=document.getElementById('e_aiBtn');const status=document.getElementById('e_aiStatus');
   btn.disabled=true;status.className='status-msg';status.textContent='AI解析中...';
   const repairInput=document.getElementById('e_repairInputAI').value;
   const conditionInput=document.getElementById('e_conditionInputAI').value;
@@ -907,13 +1019,8 @@ async function generateAI(){
 この画像の商品を分析して、以下のJSONのみを返してください。説明・コードブロック記号は一切不要。
 
 {"brandName":"ブランド名","itemShape":"商品の形状（例：二つ折り財布）","priceHigh":"相場上振れ価格（数値のみ）","priceLow":"相場下振れ価格（数値のみ）","productTitle":"【情景コピー14文字前後】\\nSEOタイトル40文字以内","keywords":"SEOワード7〜9個スペース区切り","keywordsCopy":"SEOワード7〜9個スペース区切り","productDescription":"200文字以内。CVR重視。禁止ワード使用不可。","repairContent":"リペア内容をポジティブに表現","repairDetail":"状態をポジティブに補足"}`;
-
   try{
-    const res=await fetch(CLAUDE_PROXY,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[...imageContents,{type:'text',text:prompt}]}]})
-    });
+    const res=await fetch(CLAUDE_PROXY,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[...imageContents,{type:'text',text:prompt}]}]})});
     const data=await res.json();
     const text=data.content.map(i=>i.text||'').join('');
     const r=JSON.parse(text.replace(/```json|```/g,'').trim());
@@ -929,9 +1036,7 @@ async function generateAI(){
     if(r.priceLow)document.getElementById('e_priceLow').value=r.priceLow;
     calcEditPrices();
     status.className='status-msg ok';status.textContent='自動入力完了';
-  }catch(err){
-    status.className='status-msg err';status.textContent='エラーが発生しました';console.error(err);
-  }
+  }catch(err){status.className='status-msg err';status.textContent='エラーが発生しました';console.error(err);}
   btn.disabled=false;
 }
 
@@ -944,180 +1049,71 @@ async function getNextProductNo(){
 
 // ==================== 新規登録 ====================
 async function saveNewProduct(){
-  const status=document.getElementById('r_saveStatus');
-  status.className='status-msg';status.textContent='保存中...';
+  const status=document.getElementById('r_saveStatus');status.className='status-msg';status.textContent='保存中...';
   const productNo=await getNextProductNo();
-  const data={
-    product_no:productNo,
-    photo_urls:registerImages.length?registerImages:null,
-    main_category:document.getElementById('r_mainCategory').value,
-    sub_category:document.getElementById('r_subCategory').value,
-    purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,
-    item_condition:document.getElementById('r_itemCondition').value,
-    purchase_source:document.getElementById('r_purchaseSource').value,
-    listing_account:document.getElementById('r_listingAccount').value,
-    brand_name:document.getElementById('r_brandName').value,
-    item_shape:document.getElementById('r_itemShape').value,
-    status:'仕入れ済み'
-  };
+  const data={product_no:productNo,photo_urls:registerImages.length?registerImages:null,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,status:'仕入れ済み'};
   const {error}=await sb.from('products').insert(data);
   if(error){status.className='status-msg err';status.textContent='エラー: '+error.message;}
   else{status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;setTimeout(()=>status.textContent='',4000);}
 }
+function clearRegisterForm(){document.querySelectorAll('#register input,#register select,#register textarea').forEach(el=>{if(el.type!=='file')el.value='';});registerImages=[];document.getElementById('r_previews').innerHTML='';}
 
-function clearRegisterForm(){
-  document.querySelectorAll('#register input,#register select,#register textarea').forEach(el=>{if(el.type!=='file')el.value='';});
-  registerImages=[];document.getElementById('r_previews').innerHTML='';
-}
-
-// ==================== ステージ保存（3段階）====================
+// ==================== ステージ保存 ====================
 async function saveStage(step,nextStep){
-  const statusEl=document.getElementById(`e_status${step}`);
-  statusEl.className='status-msg';statusEl.textContent='保存中...';
+  const statusEl=document.getElementById(`e_status${step}`);statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
-
   if(step===1){
     const newPhotos=editPurchaseImages.map(i=>i.dataUrl);
-    updates={
-      main_category:document.getElementById('e_mainCategory').value,
-      sub_category:document.getElementById('e_subCategory').value,
-      purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,
-      item_condition:document.getElementById('e_itemCondition').value,
-      purchase_source:document.getElementById('e_purchaseSource').value,
-      listing_account:document.getElementById('e_listingAccount').value,
-      brand_name:document.getElementById('e_brandName').value,
-      item_shape:document.getElementById('e_itemShape').value,
-    };
+    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value};
     if(newPhotos.length)updates.photo_urls=newPhotos;
     if(nextStep)updates.status='出品準備中';
   }
-
   if(step===2){
     const listingPhotos=editListingImages.map(i=>i.dataUrl);
-    const ph=Number(document.getElementById('e_priceHigh').value)||null;
-    const pl=Number(document.getElementById('e_priceLow').value)||null;
-    const mid=ph&&pl?Math.round((ph+pl)/2):null;
-    // チェックボックスのリペア詳細を収集
+    const ph=Number(document.getElementById('e_priceHigh').value)||null;const pl=Number(document.getElementById('e_priceLow').value)||null;const mid=ph&&pl?Math.round((ph+pl)/2):null;
     const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
     const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
-    updates={
-      repair_detail_checks: checkedRepairs.length ? checkedRepairs.join(',') : null,
-      sales_channel:document.getElementById('e_salesChannel').value,
-      listing_date:document.getElementById('e_listingDate').value||null,
-      warehouse_place:document.getElementById('e_warehousePlace').value,
-      price_high:ph,price_low:pl,price_mid:mid,
-      price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,
-      price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,
-      product_title:document.getElementById('e_productTitle').value,
-      keywords:document.getElementById('e_keywords').value,
-      keywords_copy:document.getElementById('e_keywordsCopy').value,
-      product_description:document.getElementById('e_productDescription').value,
-      repair_content:document.getElementById('e_repairContent').value,
-      repair_detail:document.getElementById('e_repairDetail').value,
-      size_detail:document.getElementById('e_sizeDetail').value,
-    };
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,sales_channel:document.getElementById('e_salesChannel').value,listing_date:document.getElementById('e_listingDate').value||null,warehouse_place:document.getElementById('e_warehousePlace').value,price_high:ph,price_low:pl,price_mid:mid,price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
     if(listingPhotos.length)updates.listing_photo_urls=listingPhotos;
     if(nextStep)updates.status='出品中';
   }
-
   if(step===3){
-    const rev=Number(document.getElementById('e_revenue').value)||0;
-    const ship=Number(document.getElementById('e_shippingCost').value)||0;
-    const cost=currentEditData?.purchase_price||0;
-    const feeRate=getFeeRate();
-    const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;
-    const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;
-    const profitRate=rev?Math.floor(profitWithShip/rev*100)+'%':null;
-    updates={
-      sold_date:document.getElementById('e_soldDate').value||null,
-      sold_platform:document.getElementById('e_soldPlatform').value,
-      sold_to:document.getElementById('e_soldTo').value,
-      revenue:rev||null, shipping_cost:ship||null,
-      profit_after_shipping: profitWithShip,
-      profit_gross: profitGross,
-      profit_rate: profitRate,
-      status:'売却済み'
-    };
+    const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
+    const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitWithShip/rev*100)+'%':null;
+    updates={sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate,status:'売却済み'};
   }
-
   const {error}=await sb.from('products').update(updates).eq('id',editingId);
   if(error){statusEl.className='status-msg err';statusEl.textContent='エラー: '+error.message;}
   else{statusEl.className='status-msg ok';statusEl.textContent='保存しました';if(nextStep)setTimeout(()=>switchStep(nextStep),600);}
 }
 
-// ==================== 運賃テーブル（発送元：岐阜＝中部）====================
-// ヤマト運輸（中部発）
-const YAMATO={
-  60: {hokkaido:990,kitatohoku:704,minamitohoku:638,kanto:550,shinetsu:550,hokuriku:550,chubu:550,kansai:550,chugoku:550,shikoku:550,kitakyushu:550,minamikyushu:550,okinawa:1452},
-  80: {hokkaido:1078,kitatohoku:814,minamitohoku:814,kanto:748,shinetsu:748,hokuriku:748,chubu:748,kansai:748,chugoku:748,shikoku:748,kitakyushu:748,minamikyushu:748,okinawa:2068},
-  100:{hokkaido:1232,kitatohoku:913,minamitohoku:869,kanto:803,shinetsu:803,hokuriku:803,chubu:803,kansai:803,chugoku:803,shikoku:803,kitakyushu:803,minamikyushu:803,okinawa:2706},
-};
-// 佐川急便（東海＝岐阜発）
-const SAGAWA={
-  60: {hokkaido:900,kitatohoku:640,minamitohoku:580,kanto:500,shinetsu:500,hokuriku:500,chubu:500,kansai:500,chugoku:580,shikoku:580,kitakyushu:640,minamikyushu:640,okinawa:900},
-  80: {hokkaido:980,kitatohoku:740,minamitohoku:710,kanto:680,shinetsu:680,hokuriku:680,chubu:680,kansai:680,chugoku:710,shikoku:710,kitakyushu:740,minamikyushu:740,okinawa:980},
-  100:{hokkaido:1120,kitatohoku:830,minamitohoku:790,kanto:730,shinetsu:730,hokuriku:730,chubu:730,kansai:730,chugoku:790,shikoku:790,kitakyushu:830,minamikyushu:830,okinawa:1120},
-};
+// ==================== 送料計算 ====================
+const YAMATO={60:{hokkaido:990,kitatohoku:704,minamitohoku:638,kanto:550,shinetsu:550,hokuriku:550,chubu:550,kansai:550,chugoku:550,shikoku:550,kitakyushu:550,minamikyushu:550,okinawa:1452},80:{hokkaido:1078,kitatohoku:814,minamitohoku:814,kanto:748,shinetsu:748,hokuriku:748,chubu:748,kansai:748,chugoku:748,shikoku:748,kitakyushu:748,minamikyushu:748,okinawa:2068},100:{hokkaido:1232,kitatohoku:913,minamitohoku:869,kanto:803,shinetsu:803,hokuriku:803,chubu:803,kansai:803,chugoku:803,shikoku:803,kitakyushu:803,minamikyushu:803,okinawa:2706}};
+const SAGAWA={60:{hokkaido:900,kitatohoku:640,minamitohoku:580,kanto:500,shinetsu:500,hokuriku:500,chubu:500,kansai:500,chugoku:580,shikoku:580,kitakyushu:640,minamikyushu:640,okinawa:900},80:{hokkaido:980,kitatohoku:740,minamitohoku:710,kanto:680,shinetsu:680,hokuriku:680,chubu:680,kansai:680,chugoku:710,shikoku:710,kitakyushu:740,minamikyushu:740,okinawa:980},100:{hokkaido:1120,kitatohoku:830,minamitohoku:790,kanto:730,shinetsu:730,hokuriku:730,chubu:730,kansai:730,chugoku:790,shikoku:790,kitakyushu:830,minamikyushu:830,okinawa:1120}};
 
 function onCarrierChange(){
   const carrier=document.getElementById('e_carrier').value;
-  const sizeField=document.getElementById('e_sizeField');
-  const regionField=document.getElementById('e_regionField');
-  if(carrier==='yamato_neko'){
-    sizeField.style.display='none';
-    regionField.style.display='none';
-    document.getElementById('e_shippingCost').value=220;
-    calcSoldProfit();
-  } else if(carrier==='manual'){
-    sizeField.style.display='none';
-    regionField.style.display='none';
-    document.getElementById('e_shippingCost').value='';
-  } else if(carrier==='yamato'||carrier==='sagawa'){
-    sizeField.style.display='flex';
-    regionField.style.display='flex';
-    calcShipping();
-  } else {
-    sizeField.style.display='none';
-    regionField.style.display='none';
-  }
+  const sizeField=document.getElementById('e_sizeField');const regionField=document.getElementById('e_regionField');
+  if(carrier==='yamato_neko'){sizeField.style.display='none';regionField.style.display='none';document.getElementById('e_shippingCost').value=220;calcSoldProfit();}
+  else if(carrier==='manual'){sizeField.style.display='none';regionField.style.display='none';document.getElementById('e_shippingCost').value='';}
+  else if(carrier==='yamato'||carrier==='sagawa'){sizeField.style.display='flex';regionField.style.display='flex';calcShipping();}
+  else{sizeField.style.display='none';regionField.style.display='none';}
 }
-
 function calcShipping(){
-  const carrier=document.getElementById('e_carrier').value;
-  const size=Number(document.getElementById('e_shipSize').value);
-  const region=document.getElementById('e_shipRegion').value;
+  const carrier=document.getElementById('e_carrier').value;const size=Number(document.getElementById('e_shipSize').value);const region=document.getElementById('e_shipRegion').value;
   if(!carrier||!size||!region)return;
-  const table=carrier==='yamato'?YAMATO:SAGAWA;
-  const rate=table[size]?.[region];
-  if(rate){
-    document.getElementById('e_shippingCost').value=rate;
-    calcSoldProfit();
-  }
+  const table=carrier==='yamato'?YAMATO:SAGAWA;const rate=table[size]?.[region];
+  if(rate){document.getElementById('e_shippingCost').value=rate;calcSoldProfit();}
 }
 
-// ==================== 売却利益自動計算 ====================
 const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'ゼンプラス':10,'BASE':10,'ジモティ':0,'エコリング':0,'ラクマ':4.5,'セカンドストリート':0,'個人買取':0};
-
-function getFeeRate(){
-  const sel=document.getElementById('e_soldPlatform');
-  const platform=sel.value;
-  return platform&&FEE_MAP[platform]!==undefined ? FEE_MAP[platform] : 10;
-}
-
+function getFeeRate(){const sel=document.getElementById('e_soldPlatform');const platform=sel.value;return platform&&FEE_MAP[platform]!==undefined?FEE_MAP[platform]:10;}
 function calcSoldProfit(){
-  const rev=Number(document.getElementById('e_revenue').value)||0;
-  const ship=Number(document.getElementById('e_shippingCost').value)||0;
-  const cost=currentEditData?.purchase_price||0;
-  const feeRate=getFeeRate();
+  const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
   document.getElementById('e_feeRate').value=feeRate+'%';
   if(!rev)return;
-  // 利益 = 売上×(1-手数料率) - 送料 - 仕入額　切り捨て
-  const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship-cost);
-  const profitGross=Math.floor(rev*(1-feeRate/100)-cost);
-  const profitRate=Math.floor(profitWithShip/rev*100);
-  document.getElementById('e_profitAfterShipping').value=profitWithShip;
-  document.getElementById('e_profitGross').value=profitGross;
-  document.getElementById('e_profitRate').value=profitRate+'%';
+  const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship-cost);const profitGross=Math.floor(rev*(1-feeRate/100)-cost);const profitRate=Math.floor(profitWithShip/rev*100);
+  document.getElementById('e_profitAfterShipping').value=profitWithShip;document.getElementById('e_profitGross').value=profitGross;document.getElementById('e_profitRate').value=profitRate+'%';
 }
 
 // ==================== 編集モーダル ====================
@@ -1126,45 +1122,34 @@ async function openEdit(id){
   if(!data)return;
   editingId=id;currentEditData=data;editListingImages=[];editPurchaseImages=[];
   document.getElementById('editNo').textContent=`#${String(data.product_no||'?').padStart(4,'0')}`;
-  // 仕入れ写真
+
+  // トレンドパネルをリセット
+  document.getElementById('trendEmpty').style.display='block';
+  document.getElementById('trendEmpty').textContent='ブランド名・形状を入力して「トレンド検索」を押してください';
+  document.getElementById('trendResult').style.display='none';
+  document.getElementById('trendLoading').style.display='none';
+  document.getElementById('trendBrandLabel').textContent='';
+
   const pg=document.getElementById('e_purchasePhotos');pg.innerHTML='';
   if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;pg.appendChild(img);});}
-  // 出品写真
   const lg=document.getElementById('e_listingPhotos');lg.innerHTML='';
-  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){
-    data.listing_photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;lg.appendChild(img);});
-    document.getElementById('e_aiBtn').disabled=false;
-  } else {
-    document.getElementById('e_aiBtn').disabled=true;
-  }
+  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;lg.appendChild(img);});document.getElementById('e_aiBtn').disabled=false;}
+  else{document.getElementById('e_aiBtn').disabled=true;}
+
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   set('e_mainCategory',data.main_category);set('e_subCategory',data.sub_category);
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_itemShape',data.item_shape);
-  set('e_salesChannel',data.sales_channel);set('e_listingDate',data.listing_date);
-  set('e_warehousePlace',data.warehouse_place);
-  // リペアチェックボックス復元
+  set('e_salesChannel',data.sales_channel);set('e_listingDate',data.listing_date);set('e_warehousePlace',data.warehouse_place);
   const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   const savedChecks=(data.repair_detail_checks||'').split(',');
   repairIds.forEach(repId=>{const el=document.getElementById(repId);if(el)el.checked=savedChecks.includes(el.value);});
-  set('e_priceHigh',data.price_high);set('e_priceLow',data.price_low);
-  set('e_priceMid',data.price_mid);set('e_priceHighMid',data.price_high_mid);set('e_priceLowMid',data.price_low_mid);
-  set('e_productTitle',data.product_title);set('e_keywords',data.keywords);
-  set('e_keywordsCopy',data.keywords_copy);set('e_productDescription',data.product_description);
-  set('e_repairContent',data.repair_content);set('e_repairDetail',data.repair_detail);
-  set('e_sizeDetail',data.size_detail);
-  set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);
-  set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);
-  set('e_shippingCost',data.shipping_cost);
-  set('e_profitAfterShipping',data.profit_after_shipping);
-  set('e_profitGross',data.profit_gross);
-  set('e_profitRate',data.profit_rate);
-  // 手数料率表示を復元
-  if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){
-    document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';
-  }
-  // ステータスに応じてステップを開く
+  set('e_priceHigh',data.price_high);set('e_priceLow',data.price_low);set('e_priceMid',data.price_mid);set('e_priceHighMid',data.price_high_mid);set('e_priceLowMid',data.price_low_mid);
+  set('e_productTitle',data.product_title);set('e_keywords',data.keywords);set('e_keywordsCopy',data.keywords_copy);set('e_productDescription',data.product_description);set('e_repairContent',data.repair_content);set('e_repairDetail',data.repair_detail);set('e_sizeDetail',data.size_detail);
+  set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);set('e_shippingCost',data.shipping_cost);
+  set('e_profitAfterShipping',data.profit_after_shipping);set('e_profitGross',data.profit_gross);set('e_profitRate',data.profit_rate);
+  if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';}
   const stepMap={'仕入れ済み':1,'出品準備中':2,'出品中':3,'売却済み':3};
   switchStep(stepMap[data.status]||1);
   document.getElementById('editModal').classList.add('open');
@@ -1173,22 +1158,11 @@ function closeEditModal(){document.getElementById('editModal').classList.remove(
 
 // ==================== 詳細モーダル ====================
 async function viewProduct(id){
-  const {data}=await sb.from('products').select('*').eq('id',id).single();
-  if(!data)return;
+  const {data}=await sb.from('products').select('*').eq('id',id).single();if(!data)return;
   document.getElementById('viewNo').textContent=`#${String(data.product_no||'?').padStart(4,'0')}`;
   const gallery=document.getElementById('viewPhotoGallery');gallery.innerHTML='';
   if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;gallery.appendChild(img);});}
-  const fields=[
-    ['ブランド名',data.brand_name],['形状',data.item_shape],['ステータス',data.status],
-    ['カテゴリー',(data.main_category||'')+' / '+(data.sub_category||'')],
-    ['仕入れ価格',data.purchase_price?'¥'+data.purchase_price.toLocaleString():'-'],
-    ['仕入れ先',data.purchase_source],['出品アカウント',data.listing_account],
-    ['販売予定（上振れ）',data.price_high?'¥'+data.price_high.toLocaleString():'-'],
-    ['中央値',data.price_mid?'¥'+data.price_mid.toLocaleString():'-'],
-    ['商品タイトル',data.product_title],['商品文章',data.product_description],
-    ['売上',data.revenue?'¥'+data.revenue.toLocaleString():'-'],
-    ['利益',data.profit_gross?'¥'+data.profit_gross.toLocaleString():'-'],['利益率',data.profit_rate||'-'],
-  ];
+  const fields=[['ブランド名',data.brand_name],['形状',data.item_shape],['ステータス',data.status],['カテゴリー',(data.main_category||'')+' / '+(data.sub_category||'')],['仕入れ価格',data.purchase_price?'¥'+data.purchase_price.toLocaleString():'-'],['仕入れ先',data.purchase_source],['出品アカウント',data.listing_account],['販売予定（上振れ）',data.price_high?'¥'+data.price_high.toLocaleString():'-'],['中央値',data.price_mid?'¥'+data.price_mid.toLocaleString():'-'],['商品タイトル',data.product_title],['商品文章',data.product_description],['売上',data.revenue?'¥'+data.revenue.toLocaleString():'-'],['利益',data.profit_gross?'¥'+data.profit_gross.toLocaleString():'-'],['利益率',data.profit_rate||'-']];
   document.getElementById('viewContent').innerHTML='<div class="grid">'+fields.map(([l,v])=>`<div class="field"><label>${l}</label><div class="readonly-field">${v||'-'}</div></div>`).join('')+'</div>';
   document.getElementById('viewModal').classList.add('open');
 }
@@ -1196,8 +1170,7 @@ async function viewProduct(id){
 // ==================== 削除 ====================
 async function deleteProduct(id,no){
   if(!confirm(`No.${no} を削除しますか？`))return;
-  await sb.from('products').delete().eq('id',id);
-  loadProducts();
+  await sb.from('products').delete().eq('id',id);loadProducts();
 }
 
 // ==================== ダッシュボードフィルター ====================
@@ -1205,136 +1178,61 @@ function applyDashFilter(){
   const brand=(document.getElementById('f_brand').value||'').trim().toLowerCase();
   const shape=(document.getElementById('f_shape').value||'').trim().toLowerCase();
   const status=document.getElementById('f_status').value;
-  const dateFrom=document.getElementById('f_dateFrom').value;
-  const dateTo=document.getElementById('f_dateTo').value;
-
+  const dateFrom=document.getElementById('f_dateFrom').value;const dateTo=document.getElementById('f_dateTo').value;
   const filtered=allProductsCache.filter(d=>{
     if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
     if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
     if(status&&d.status!==status)return false;
     const cd=d.created_at?d.created_at.slice(0,10):'';
-    if(dateFrom&&cd<dateFrom)return false;
-    if(dateTo&&cd>dateTo)return false;
-    return true;
+    if(dateFrom&&cd<dateFrom)return false;if(dateTo&&cd>dateTo)return false;return true;
   });
-
   document.getElementById('f_count').textContent=`${filtered.length}件`;
   document.getElementById('recentTable').innerHTML=filtered.map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls[0]
-      ?`<img class="thumb" src="${d.listing_photo_urls[0]}">`
-      :`<div class="thumb-empty">なし</div>`;
-    return `<tr>
-      <td>${thumb}</td>
-      <td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td>
-      <td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td>
-      <td>${statusBadge(d.status)}</td>
-      <td>${d.created_at?d.created_at.slice(0,10):'-'}</td>
-      <td>${d.listing_date||'-'}</td>
-    </tr>`;
+    const thumb=d.listing_photo_urls&&d.listing_photo_urls[0]?`<img class="thumb" src="${d.listing_photo_urls[0]}">`:`<div class="thumb-empty">なし</div>`;
+    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${statusBadge(d.status)}</td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
   }).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>`;
 }
+function clearDashFilter(){['f_brand','f_shape','f_dateFrom','f_dateTo'].forEach(id=>document.getElementById(id).value='');document.getElementById('f_status').value='';applyDashFilter();}
 
-function clearDashFilter(){
-  ['f_brand','f_shape','f_dateFrom','f_dateTo'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f_status').value='';
-  applyDashFilter();
-}
-
-// ==================== スプレッドシートフィルター ====================
+// ==================== シートフィルター ====================
 let salesRawData=[];
-
 function buildSheetYearOptions(data){
-  const years=new Set();
-  data.forEach(d=>{
-    if(d.created_at)years.add(d.created_at.slice(0,4));
-    if(d.sold_date)years.add(d.sold_date.slice(0,4));
-  });
-  const sel=document.getElementById('sf_year');
-  sel.innerHTML='<option value="">年：全て</option>';
-  [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt=document.createElement('option');opt.value=y;opt.textContent=y+'年';sel.appendChild(opt);
-  });
+  const years=new Set();data.forEach(d=>{if(d.created_at)years.add(d.created_at.slice(0,4));if(d.sold_date)years.add(d.sold_date.slice(0,4));});
+  const sel=document.getElementById('sf_year');sel.innerHTML='<option value="">年：全て</option>';
+  [...years].sort((a,b)=>b-a).forEach(y=>{const opt=document.createElement('option');opt.value=y;opt.textContent=y+'年';sel.appendChild(opt);});
 }
-
 function applySheetFilter(){
-  const yr=document.getElementById('sf_year').value;
-  const mo=document.getElementById('sf_month').value;
+  const yr=document.getElementById('sf_year').value;const mo=document.getElementById('sf_month').value;
   const profitMin=document.getElementById('sf_profitMin').value!==''?Number(document.getElementById('sf_profitMin').value):null;
   const profitMax=document.getElementById('sf_profitMax').value!==''?Number(document.getElementById('sf_profitMax').value):null;
   const revMin=document.getElementById('sf_revenueMin').value!==''?Number(document.getElementById('sf_revenueMin').value):null;
   const revMax=document.getElementById('sf_revenueMax').value!==''?Number(document.getElementById('sf_revenueMax').value):null;
-
   const filtered=salesRawData.filter(d=>{
-    const cd=d.created_at?d.created_at.slice(0,10):'';
-    const sd=d.sold_date||'';
-    const refDate=sd||cd;
+    const cd=d.created_at?d.created_at.slice(0,10):'';const sd=d.sold_date||'';const refDate=sd||cd;
     if(yr&&!refDate.startsWith(yr))return false;
-    if(mo&&!refDate.slice(5,7)===mo)return false;
-    if(profitMin!==null&&(d.profit_gross||0)<profitMin)return false;
-    if(profitMax!==null&&(d.profit_gross||0)>profitMax)return false;
-    if(revMin!==null&&(d.revenue||0)<revMin)return false;
-    if(revMax!==null&&(d.revenue||0)>revMax)return false;
-    return true;
+    if(profitMin!==null&&(d.profit_gross||0)<profitMin)return false;if(profitMax!==null&&(d.profit_gross||0)>profitMax)return false;
+    if(revMin!==null&&(d.revenue||0)<revMin)return false;if(revMax!==null&&(d.revenue||0)>revMax)return false;return true;
   });
-
-  // 月フィルター（sold_dateかcreated_atの月）
-  const moFiltered=mo?filtered.filter(d=>{
-    const sd=(d.sold_date||'').slice(5,7);
-    const cd=(d.created_at||'').slice(5,7);
-    return sd===mo||cd===mo;
-  }):filtered;
-
+  const moFiltered=mo?filtered.filter(d=>{const sd=(d.sold_date||'').slice(5,7);const cd=(d.created_at||'').slice(5,7);return sd===mo||cd===mo;}):filtered;
   buildSheetTable(moFiltered);
 }
-
-function clearSheetFilter(){
-  ['sf_profitMin','sf_profitMax','sf_revenueMin','sf_revenueMax'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('sf_year').value='';
-  document.getElementById('sf_month').value='';
-  buildSheetTable(salesRawData);
-}
+function clearSheetFilter(){['sf_profitMin','sf_profitMax','sf_revenueMin','sf_revenueMax'].forEach(id=>document.getElementById(id).value='');document.getElementById('sf_year').value='';document.getElementById('sf_month').value='';buildSheetTable(salesRawData);}
 
 function buildSheetTable(data){
   const tree={};
   data.forEach(d=>{
     const cd=d.created_at?d.created_at.slice(0,10):null;
-    if(cd){
-      const yr=cd.slice(0,4);const mo=cd.slice(5,7);const wk='第'+getWeekNumber(cd)+'週';
-      if(!tree[yr])tree[yr]={months:{}};
-      if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
-      if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0};
-      tree[yr].months[mo].weeks[wk].purchaseCount++;
-      tree[yr].months[mo].weeks[wk].purchaseSum+=d.purchase_price||0;
-    }
-    if(d.sold_date){
-      const sd=d.sold_date;const yr=sd.slice(0,4);const mo=sd.slice(5,7);const wk='第'+getWeekNumber(sd)+'週';
-      if(!tree[yr])tree[yr]={months:{}};
-      if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
-      if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0};
-      tree[yr].months[mo].weeks[wk].soldCount++;
-      tree[yr].months[mo].weeks[wk].revenue+=d.revenue||0;
-      tree[yr].months[mo].weeks[wk].profit+=d.profit_gross||0;
-    }
+    if(cd){const yr=cd.slice(0,4);const mo=cd.slice(5,7);const wk='第'+getWeekNumber(cd)+'週';if(!tree[yr])tree[yr]={months:{}};if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0};tree[yr].months[mo].weeks[wk].purchaseCount++;tree[yr].months[mo].weeks[wk].purchaseSum+=d.purchase_price||0;}
+    if(d.sold_date){const sd=d.sold_date;const yr=sd.slice(0,4);const mo=sd.slice(5,7);const wk='第'+getWeekNumber(sd)+'週';if(!tree[yr])tree[yr]={months:{}};if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0};tree[yr].months[mo].weeks[wk].soldCount++;tree[yr].months[mo].weeks[wk].revenue+=d.revenue||0;tree[yr].months[mo].weeks[wk].profit+=d.profit_gross||0;}
   });
-
   let rows='';
   const years=Object.keys(tree).sort((a,b)=>b-a);
   years.forEach(yr=>{
-    let yrPC=0,yrPS=0,yrSC=0,yrRev=0,yrProfit=0;
-    const months=Object.keys(tree[yr].months).sort();
-    let monthRows='';
+    let yrPC=0,yrPS=0,yrSC=0,yrRev=0,yrProfit=0;const months=Object.keys(tree[yr].months).sort();let monthRows='';
     months.forEach(mo=>{
-      let moPC=0,moPS=0,moSC=0,moRev=0,moProfit=0;
-      const weeks=Object.keys(tree[yr].months[mo].weeks).sort((a,b)=>parseInt(a.replace(/[^0-9]/g,''))-parseInt(b.replace(/[^0-9]/g,'')));
-      let weekRows='';
-      weeks.forEach(wk=>{
-        const w=tree[yr].months[mo].weeks[wk];
-        moPC+=w.purchaseCount;moPS+=w.purchaseSum;moSC+=w.soldCount;moRev+=w.revenue;moProfit+=w.profit;
-        const wkRate=w.revenue?Math.round(w.profit/w.revenue*100):null;
-        weekRows+=`<tr class="row-week"><td class="label"></td><td class="label"></td><td class="label indent2">${wk}</td><td>${w.purchaseSum?'¥'+w.purchaseSum.toLocaleString():'-'}</td><td>${w.revenue?'¥'+w.revenue.toLocaleString():'-'}</td><td class="${negClass(w.profit)}">${w.profit?'¥'+w.profit.toLocaleString():'-'}</td><td class="${wkRate!==null?(wkRate<0?'neg':'pos'):''}">${wkRate!==null?wkRate+'%':'-'}</td><td>${w.purchaseCount||'-'}</td><td>${w.soldCount||'-'}</td></tr>`;
-      });
-      yrPC+=moPC;yrPS+=moPS;yrSC+=moSC;yrRev+=moRev;yrProfit+=moProfit;
-      const moRate=moRev?Math.round(moProfit/moRev*100):null;
+      let moPC=0,moPS=0,moSC=0,moRev=0,moProfit=0;const weeks=Object.keys(tree[yr].months[mo].weeks).sort((a,b)=>parseInt(a.replace(/[^0-9]/g,''))-parseInt(b.replace(/[^0-9]/g,'')));let weekRows='';
+      weeks.forEach(wk=>{const w=tree[yr].months[mo].weeks[wk];moPC+=w.purchaseCount;moPS+=w.purchaseSum;moSC+=w.soldCount;moRev+=w.revenue;moProfit+=w.profit;const wkRate=w.revenue?Math.round(w.profit/w.revenue*100):null;weekRows+=`<tr class="row-week"><td class="label"></td><td class="label"></td><td class="label indent2">${wk}</td><td>${w.purchaseSum?'¥'+w.purchaseSum.toLocaleString():'-'}</td><td>${w.revenue?'¥'+w.revenue.toLocaleString():'-'}</td><td class="${negClass(w.profit)}">${w.profit?'¥'+w.profit.toLocaleString():'-'}</td><td class="${wkRate!==null?(wkRate<0?'neg':'pos'):''}">${wkRate!==null?wkRate+'%':'-'}</td><td>${w.purchaseCount||'-'}</td><td>${w.soldCount||'-'}</td></tr>`;});
+      yrPC+=moPC;yrPS+=moPS;yrSC+=moSC;yrRev+=moRev;yrProfit+=moProfit;const moRate=moRev?Math.round(moProfit/moRev*100):null;
       monthRows+=`<tr class="row-month"><td class="label"></td><td class="label indent1">${parseInt(mo)}月</td><td class="label"></td><td>¥${moPS.toLocaleString()}</td><td>¥${moRev.toLocaleString()}</td><td class="${negClass(moProfit)}">¥${moProfit.toLocaleString()}</td><td class="${moRate!==null?(moRate<0?'neg':'pos'):''}">${moRate!==null?moRate+'%':'-'}</td><td>${moPC}</td><td>${moSC}</td></tr>${weekRows}`;
     });
     const yrRate=yrRev?Math.round(yrProfit/yrRev*100):null;
@@ -1345,8 +1243,7 @@ function buildSheetTable(data){
 
 // ==================== ダッシュボード ====================
 async function loadDashboard(){
-  const {data}=await sb.from('products').select('*').order('product_no',{ascending:false});
-  if(!data)return;
+  const {data}=await sb.from('products').select('*').order('product_no',{ascending:false});if(!data)return;
   allProductsCache=data;
   document.getElementById('statTotal').textContent=data.length;
   document.getElementById('statPurchased').textContent=data.filter(d=>d.status==='仕入れ済み').length;
@@ -1356,76 +1253,28 @@ async function loadDashboard(){
   const totalProfit=data.reduce((s,d)=>s+(d.profit_gross||0),0);
   document.getElementById('statProfit').textContent='¥'+totalProfit.toLocaleString();
   document.getElementById('recentTable').innerHTML=data.slice(0,10).map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls[0]
-      ?`<img class="thumb" src="${d.listing_photo_urls[0]}">`
-      :`<div class="thumb-empty">なし</div>`;
-    return `<tr>
-      <td>${thumb}</td>
-      <td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td>
-      <td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td>
-      <td>${statusBadge(d.status)}</td>
-      <td>${d.created_at?d.created_at.slice(0,10):'-'}</td>
-      <td>${d.listing_date||'-'}</td>
-    </tr>`;
+    const thumb=d.listing_photo_urls&&d.listing_photo_urls[0]?`<img class="thumb" src="${d.listing_photo_urls[0]}">`:`<div class="thumb-empty">なし</div>`;
+    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${statusBadge(d.status)}</td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
   }).join('');
 }
 
 // ==================== 商品一覧 ====================
 async function loadProducts(){
-  const {data}=await sb.from('products').select('*').order('product_no',{ascending:false});
-  if(!data)return;
-  document.getElementById('productsTable').innerHTML=data.map(d=>`
-    <tr>
-      <td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td>
-      <td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td>
-      <td>${d.main_category||'-'}/${d.sub_category||'-'}</td>
-      <td>¥${(d.purchase_price||0).toLocaleString()}</td>
-      <td>${statusBadge(d.status)}</td>
-      <td>
-        <button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button>
-        <button class="action-btn" onclick="openEdit('${d.id}')">編集</button>
-        <button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button>
-      </td>
-    </tr>`).join('');
+  const {data}=await sb.from('products').select('*').order('product_no',{ascending:false});if(!data)return;
+  document.getElementById('productsTable').innerHTML=data.map(d=>`<tr><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td>${statusBadge(d.status)}</td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`).join('');
 }
 
 // ==================== 売上管理 ====================
-function getWeekNumber(dateStr){
-  const d=new Date(dateStr);
-  const jan1=new Date(d.getFullYear(),0,1);
-  return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
-}
+function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.getFullYear(),0,1);return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);}
 
 async function loadSales(){
-  const {data}=await sb.from('products').select('*').order('created_at',{ascending:true});
-  if(!data)return;
-
-  // グラフ用・シートフィルター用データ保存
-  chartAllData=data;
-  salesRawData=data;
-  buildYearOptions(data);
-  buildSheetYearOptions(data);
-
+  const {data}=await sb.from('products').select('*').order('created_at',{ascending:true});if(!data)return;
+  chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='売却済み');
-  const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);
-  const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
-  document.getElementById('salesStats').innerHTML=`
-    <div class="stat"><p>売却数</p><h3>${sold.length}</h3></div>
-    <div class="stat"><p>総売上</p><h3>¥${totalRev.toLocaleString()}</h3></div>
-    <div class="stat"><p>総利益</p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div>`;
-
+  const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
+  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上</p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>総利益</p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div>`;
   buildSheetTable(data);
-
-  document.getElementById('salesTable').innerHTML=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date)).map(d=>`
-    <tr>
-      <td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td>
-      <td>${d.brand_name||'-'}</td><td>${d.sold_date||'-'}</td>
-      <td>${d.sold_platform||'-'}</td>
-      <td>${d.sold_to||'-'}</td>
-      <td>¥${(d.revenue||0).toLocaleString()}</td>
-      <td class="${negClass(d.profit_gross)}">¥${(d.profit_gross||0).toLocaleString()}</td>
-      <td>${d.profit_rate||'-'}</td>
-    </tr>`).join('');
+  document.getElementById('salesTable').innerHTML=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date)).map(d=>`<tr><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td>${d.brand_name||'-'}</td><td>${d.sold_date||'-'}</td><td>${d.sold_platform||'-'}</td><td>${d.sold_to||'-'}</td><td>¥${(d.revenue||0).toLocaleString()}</td><td class="${negClass(d.profit_gross)}">¥${(d.profit_gross||0).toLocaleString()}</td><td>${d.profit_rate||'-'}</td></tr>`).join('');
 }
 
 loadDashboard();
