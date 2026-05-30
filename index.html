@@ -1176,7 +1176,7 @@ async function saveStage(step,nextStep){
   let updates={};
   if(step===1){
     const newPhotos=editPurchaseImages.map(i=>i.dataUrl);
-    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value};
+    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,shelf_no:document.getElementById('e_shelfNo').value};
     if(newPhotos.length)updates.photo_urls=newPhotos;
     if(nextStep)updates.status='撮影前';
   }
