@@ -848,8 +848,17 @@ async function analyzeTrendAndFill(){
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages})
     });
     const aiData=await aiRes.json();
-    const aiText=aiData.content.map(i=>i.text||'').join('');
-    const r=JSON.parse(aiText.replace(/```json|```/g,'').trim());
+    // エラーレスポンス確認
+    if(!aiData.content){
+      const errMsg=aiData.error?.message||JSON.stringify(aiData);
+      throw new Error('AI生成エラー: '+errMsg);
+    }
+    const aiText=aiData.content.filter(i=>i.type==='text').map(i=>i.text||'').join('');
+    if(!aiText) throw new Error('AI応答が空です');
+    const cleaned=aiText.replace(/```json|```/g,'').trim();
+    const jsonMatch=cleaned.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('JSONが見つかりません: '+cleaned.slice(0,100));
+    const r=JSON.parse(jsonMatch[0]);
 
     setProgress(90,'③ フィールドに反映中...');
 
