@@ -269,6 +269,7 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="field"><label>ブランド名</label><input type="text" id="r_brandName"></div>
       <div class="field"><label>形状</label><input type="text" id="r_itemShape" placeholder="例：二つ折り財布"></div>
+      <div class="field"><label>フリーワード</label><input type="text" id="r_freeWord" placeholder="例：モノグラム ブラウン"></div>
       <div class="field"><label>棚番</label><input type="text" id="r_shelfNo" placeholder="例：A-12"></div>
     </div>
     <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
@@ -486,6 +487,7 @@ tr:hover td{background:var(--surface2);}
         </div>
         <div class="field"><label>ブランド名</label><input type="text" id="e_brandName"></div>
         <div class="field"><label>形状</label><input type="text" id="e_itemShape"></div>
+        <div class="field"><label>フリーワード</label><input type="text" id="e_freeWord" placeholder="例：モノグラム ブラウン"></div>
         <div class="field"><label>棚番</label><input type="text" id="e_shelfNo" placeholder="例：A-12"></div>
       </div>
       <div class="btn-row">
@@ -670,7 +672,7 @@ tr:hover td{background:var(--surface2);}
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveStage(3)">保存して入金ステータスにする</button>
+        <button class="btn btn-primary" onclick="saveStage(3)">保存</button>
         <span class="status-msg" id="e_status3"></span>
       </div>
     </div>
@@ -767,7 +769,8 @@ function setProgress(pct, msg){
 async function fetchTrend(){
   const brand=document.getElementById('e_brandName').value.trim();
   const shape=document.getElementById('e_itemShape').value.trim();
-  if(!brand&&!shape){alert('ブランド名または形状を入力してください');return;}
+  const freeWord=document.getElementById('e_freeWord')?document.getElementById('e_freeWord').value.trim():'';
+  if(!brand&&!shape&&!freeWord){alert('ブランド名・形状・フリーワードのいずれかを入力してください');return;}
 
   const btn=document.getElementById('e_trendBtn');
   const status=document.getElementById('e_aiStatus');
@@ -836,6 +839,7 @@ async function fetchTrend(){
 async function generateAI(){
   const brand=document.getElementById('e_brandName').value.trim();
   const shape=document.getElementById('e_itemShape').value.trim();
+  const freeWord=document.getElementById('e_freeWord')?document.getElementById('e_freeWord').value.trim():'';
   const repairInput=document.getElementById('e_repairInputAI').value.trim();
   const conditionInput=document.getElementById('e_conditionInputAI').value.trim();
   const hasPhotos=editListingImages.length>0;
@@ -857,7 +861,7 @@ async function generateAI(){
         +'※ トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映。相場帯で価格を設定。'
       : '';
 
-    const brandInfo=hasPhotos?'':(brand+' '+shape+' ');
+    const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
     const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
       +'タイトル形式：【情景コピー14文字】\nブランド名 形状 素材 カラー\n'
@@ -1062,7 +1066,7 @@ function barOpts(tickCb){
 }
 function drawCategoryPies(){
   // 出品中ステータスの商品のみ
-  const active=['出品中','発送前','受け取り評価前','出品前','エコオク','メルカリオークション'];
+  const active=['出品中'];
   const listing=chartAllData.filter(d=>active.includes(d.status));
 
   // 大カテゴリ
@@ -1163,7 +1167,7 @@ async function getNextProductNo(){
 async function saveNewProduct(){
   const status=document.getElementById('r_saveStatus');status.className='status-msg';status.textContent='保存中...';
   const productNo=await getNextProductNo();
-  const data={product_no:productNo,photo_urls:registerImages.length?registerImages:null,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,shelf_no:document.getElementById('r_shelfNo').value,status:'仕分け前'};
+  const data={product_no:productNo,photo_urls:registerImages.length?registerImages:null,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,shelf_no:document.getElementById('r_shelfNo').value,status:'仕分け前'};
   const {error}=await sb.from('products').insert(data);
   if(error){status.className='status-msg err';status.textContent='エラー: '+error.message;}
   else{status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;setTimeout(()=>status.textContent='',4000);}
@@ -1176,7 +1180,7 @@ async function saveStage(step,nextStep){
   let updates={};
   if(step===1){
     const newPhotos=editPurchaseImages.map(i=>i.dataUrl);
-    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,shelf_no:document.getElementById('e_shelfNo').value};
+    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,free_word:document.getElementById('e_freeWord').value,shelf_no:document.getElementById('e_shelfNo').value};
     if(newPhotos.length)updates.photo_urls=newPhotos;
     if(nextStep)updates.status='撮影前';
   }
@@ -1252,7 +1256,7 @@ async function openEdit(id){
   set('e_mainCategory',data.main_category);set('e_subCategory',data.sub_category);
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
-  set('e_brandName',data.brand_name);set('e_itemShape',data.item_shape);set('e_shelfNo',data.shelf_no);
+  set('e_brandName',data.brand_name);set('e_itemShape',data.item_shape);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
   set('e_salesChannel',data.sales_channel);set('e_listingDate',data.listing_date);set('e_warehousePlace',data.warehouse_place);
   const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   const savedChecks=(data.repair_detail_checks||'').split(',');
@@ -1436,7 +1440,7 @@ function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.
 async function loadSales(){
   const {data}=await sb.from('products').select('*').order('created_at',{ascending:true});if(!data)return;
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
-  const sold=data.filter(d=>d.status==='売却済み');
+  const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
   document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上</p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>総利益</p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div>`;
   buildSheetTable(data);
