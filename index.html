@@ -817,7 +817,9 @@ async function analyzeTrendAndFill(){
     if(trend.priceMin&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=trend.priceMin;
     if(trend.priceMax||trend.priceMin) calcEditPrices();
 
-    // ===== STEP2: AI生成 =====
+    // ===== STEP2: AI生成（レートリミット対策で3秒待機）=====
+    setProgress(40,'⏳ 少々お待ちください...');
+    await new Promise(r=>setTimeout(r,3000));
     setProgress(50,'② 商品情報をAI生成中...');
 
     const trendSection='\n【トレンド情報（メルカリ・ラクマ調査済み）】\n'
@@ -827,15 +829,15 @@ async function analyzeTrendAndFill(){
       +'※ トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映してください。\n'
       +'※ 相場帯に基づいて価格を設定してください。';
 
-    const basePrompt='あなたはハイブランド中古商品のコピーライターです。ブランド価値を保ちながらECサイトでクリック率と購入率を高める文章を作成してください。\n\n'
-      +'【絶対禁止ワード】安い/激安/お得/正規品/本物/鑑定済み/ギャランティ/保証/ICチップ/安心/確実/間違いない/ロゴくっきり/型番一致/人気/定番/入手困難/ギャラ付き/ラグジュアリー\n\n'
-      +'【情景コピーのルール】\n・ブランド名は入れない・情景が浮かぶ言葉・詩的、芸術的な表現\n良い例：静かに格を纏う／品は細部に宿る／余裕は小物に出る\n\n'
-      +'【タイトル構造】\n①情景コピー（14文字前後）を【】で囲む ②改行してSEOタイトル（ブランド名 商品形状 素材 カラー）\n'
-      +trendSection+'\n\n'
-      +'【入力情報】\nリペア内容：'+(repairInput||'不明')+'\n気になる状態：'+(conditionInput||'不明')+'\n'
-      +(hasPhotos?'':'ブランド：'+brand+'\n形状：'+shape+'\n\n')
-      +'この商品の出品情報を分析して、以下のJSONのみを返してください。説明・コードブロック記号は一切不要。\n\n'
-      +'{"brandName":"ブランド名","itemShape":"形状","priceHigh":"上振れ価格（数値のみ）","priceLow":"下振れ価格（数値のみ）","productTitle":"【情景コピー14文字前後】\\nSEOタイトル40文字以内","keywords":"SEOワード7〜9個スペース区切り（トレンドKW優先）","keywordsCopy":"SEOワード7〜9個スペース区切り","productDescription":"200文字以内。CVR重視。禁止ワード不可。トレンド反映。","repairContent":"リペア内容をポジティブに表現","repairDetail":"状態をポジティブに補足"}';
+    // STEP2プロンプト（トークン節約のため簡潔に）
+    const brandInfo=hasPhotos?'':(brand+' '+shape+' ');
+    const basePrompt='中古ブランド品ECコピーライター。禁止語なし。\n'
+      +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
+      +'タイトル形式：【情景コピー14文字】\nブランド名 形状 素材 カラー\n'
+      +trendSection+'\n'
+      +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
+      +(hasPhotos?'':'対象：'+brandInfo+'\n')
+      +'JSONのみ返答：{"brandName":"","itemShape":"","priceHigh":0,"priceLow":0,"productTitle":"","keywords":"","keywordsCopy":"","productDescription":"","repairContent":"","repairDetail":""}';
 
     // 写真あり：画像＋テキスト、写真なし：テキストのみ
     const messages=hasPhotos
