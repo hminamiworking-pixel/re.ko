@@ -542,7 +542,7 @@ tr:hover td{background:var(--surface2);}
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rep_none" value="無し"><span>無し</span></label>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">🛍 出品用写真・AI自動入力</div>
+      <div class="section-label" style="margin-top:16px;">🛍 出品用写真</div>
       <div class="photo-gallery" id="e_listingPhotos"></div>
       <div class="upload-area" style="margin-bottom:8px;">
         <input type="file" id="e_listingPhotoInput" accept="image/*" multiple onchange="handleEditPhotos(event,'listing')">
@@ -553,9 +553,11 @@ tr:hover td{background:var(--surface2);}
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">🔍 トレンド検索</button>
-        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()" disabled>AIで自動入力</button>
+        <button class="btn btn-ai" id="e_analyzeBtn" onclick="analyzeTrendAndFill()" style="background:linear-gradient(135deg,var(--teal),var(--purple));padding:10px 22px;font-size:13px;">🔍✨ トレンド解析＆自動入力</button>
         <span class="status-msg" id="e_aiStatus"></span>
+      </div>
+      <div id="e_progressBar" style="display:none;margin-top:10px;background:var(--surface2);border-radius:20px;height:4px;overflow:hidden;">
+        <div id="e_progressFill" style="height:100%;background:linear-gradient(90deg,var(--teal),var(--purple));width:0%;transition:width .4s ease;border-radius:20px;"></div>
       </div>
 
       <div class="section-label" style="margin-top:16px;">出品情報</div>
@@ -738,101 +740,143 @@ function switchSalesTab(tab,btn){
   if(tab==='chart')redrawAllCharts();
 }
 
-// ==================== トレンド検索 ====================
-async function fetchTrend(){
+
+
+
+// ==================== トレンド解析＆自動入力（統合）====================
+function setProgress(pct, msg){
+  document.getElementById('e_progressFill').style.width=pct+'%';
+  if(msg){const s=document.getElementById('e_aiStatus');s.className='status-msg';s.textContent=msg;}
+}
+
+async function analyzeTrendAndFill(){
   const brand=document.getElementById('e_brandName').value.trim();
   const shape=document.getElementById('e_itemShape').value.trim();
+  const repairInput=document.getElementById('e_repairInputAI').value.trim();
+  const conditionInput=document.getElementById('e_conditionInputAI').value.trim();
+  const hasPhotos=editListingImages.length>0;
 
-  if(!brand&&!shape){
-    alert('ブランド名または形状を入力してください');
-    return;
-  }
+  if(!brand&&!shape){alert('ブランド名または形状を入力してください');return;}
 
-  const btn=document.getElementById('e_trendBtn');
+  const btn=document.getElementById('e_analyzeBtn');
   btn.disabled=true;
-
-  // UI状態
+  document.getElementById('e_progressBar').style.display='block';
   document.getElementById('trendEmpty').style.display='none';
   document.getElementById('trendResult').style.display='none';
   document.getElementById('trendLoading').style.display='flex';
-  document.getElementById('trendBrandLabel').textContent=`— ${[brand,shape].filter(Boolean).join(' ')}`;
+  document.getElementById('trendBrandLabel').textContent='— '+(brand+' '+shape).trim();
 
-  const query=`${brand} ${shape}`.trim();
+  const query=(brand+' '+shape).trim();
   const now=new Date();
-  const ymLabel=`${now.getFullYear()}年${now.getMonth()+1}月`;
-
-  const prompt=`あなたは日本のフリマアプリ（メルカリ・ラクマ）の中古ブランド品市場に詳しいアナリストです。
-ウェブ検索で「${query} メルカリ 売れ筋 相場 ${now.getFullYear()}」などを調べ、以下のJSONのみを返してください。説明・コードブロック記号は不要。
-
-{
-  "hotKeywords": ["キーワード1","キーワード2","キーワード3","キーワード4","キーワード5"],
-  "priceMin": 相場下限（数値のみ、円）,
-  "priceMid": 相場中央値（数値のみ、円）,
-  "priceMax": 相場上限（数値のみ、円）,
-  "summary": "120文字以内。売れ行き傾向・需要の強さ・注目ポイントを具体的に。"
-}
-
-検索クエリ：「${query} メルカリ 売れ筋 相場 2026」「${query} ラクマ 人気 トレンド」`;
 
   try{
-    const res=await fetch(CLAUDE_PROXY,{
+    // ===== STEP1: トレンド検索 =====
+    setProgress(15,'① メルカリ・ラクマのトレンドを検索中...');
+
+    const trendPrompt='あなたは日本のフリマアプリ（メルカリ・ラクマ）の中古ブランド品市場に詳しいアナリストです。\n'
+      +'ウェブ検索で「'+query+' メルカリ 売れ筋 相場 '+now.getFullYear()+'」を調べ、以下のJSONのみを返してください。説明・コードブロック記号は不要。\n\n'
+      +'{"hotKeywords":["kw1","kw2","kw3","kw4","kw5"],"priceMin":数値,"priceMid":数値,"priceMax":数値,"summary":"120文字以内の需要傾向"}\n\n'
+      +'検索クエリ：「'+query+' メルカリ 売れ筋 相場 2026」「'+query+' ラクマ 人気 トレンド」';
+
+    const trendRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:800,
         tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:prompt}]
+        messages:[{role:'user',content:trendPrompt}]
       })
     });
-    const data=await res.json();
+    const trendData=await trendRes.json();
+    const trendText=(trendData.content||[]).filter(i=>i.type==='text').map(i=>i.text).join('');
+    const trend=JSON.parse(trendText.replace(/```json|```/g,'').trim());
+    trendCache=trend;
 
-    // テキストブロックを抽出
-    const text=(data.content||[]).filter(i=>i.type==='text').map(i=>i.text).join('');
-    const r=JSON.parse(text.replace(/```json|```/g,'').trim());
-
-    // ホットキーワード表示
+    // トレンドパネル表示
     const tagsEl=document.getElementById('trendHotTags');
     tagsEl.innerHTML='';
-    (r.hotKeywords||[]).forEach((kw,i)=>{
+    (trend.hotKeywords||[]).forEach((kw,i)=>{
       const tag=document.createElement('span');
       tag.className='trend-tag'+(i<2?' hot':'');
-      tag.textContent=kw;
-      tag.title='クリックでキーワードに追加';
+      tag.textContent=kw;tag.title='クリックでキーワードに追加';
       tag.onclick=()=>appendKeyword(kw);
       tagsEl.appendChild(tag);
     });
-
-    // 相場表示
-    document.getElementById('trendPriceRow').innerHTML=`
-      <div class="trend-price-card"><div class="label">下限</div><div class="value">¥${(r.priceMin||0).toLocaleString()}</div></div>
-      <div class="trend-price-card"><div class="label">中央値</div><div class="value">¥${(r.priceMid||0).toLocaleString()}</div></div>
-      <div class="trend-price-card"><div class="label">上限</div><div class="value">¥${(r.priceMax||0).toLocaleString()}</div></div>
-    `;
-
-    // トレンドキャッシュ保存（AI自動入力で参照）
-    trendCache=r;
-
-    // 相場を価格フィールドに反映（未入力の場合のみ）
-    if(r.priceMax&&!document.getElementById('e_priceHigh').value){
-      document.getElementById('e_priceHigh').value=r.priceMax;
-    }
-    if(r.priceMin&&!document.getElementById('e_priceLow').value){
-      document.getElementById('e_priceLow').value=r.priceMin;
-    }
-    if(r.priceMax||r.priceMin)calcEditPrices();
-
-    // サマリー
-    document.getElementById('trendSummary').textContent=r.summary||'データなし';
-    document.getElementById('trendUpdatedAt').textContent=`取得日時：${ymLabel} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-
+    document.getElementById('trendPriceRow').innerHTML=
+      '<div class="trend-price-card"><div class="label">下限</div><div class="value">¥'+(trend.priceMin||0).toLocaleString()+'</div></div>'
+      +'<div class="trend-price-card"><div class="label">中央値</div><div class="value">¥'+(trend.priceMid||0).toLocaleString()+'</div></div>'
+      +'<div class="trend-price-card"><div class="label">上限</div><div class="value">¥'+(trend.priceMax||0).toLocaleString()+'</div></div>';
+    document.getElementById('trendSummary').textContent=trend.summary||'データなし';
+    document.getElementById('trendUpdatedAt').textContent='取得日時：'+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 '+now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0'));
     document.getElementById('trendLoading').style.display='none';
     document.getElementById('trendResult').style.display='block';
+
+    // 相場を価格フィールドに反映（未入力時のみ）
+    if(trend.priceMax&&!document.getElementById('e_priceHigh').value) document.getElementById('e_priceHigh').value=trend.priceMax;
+    if(trend.priceMin&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=trend.priceMin;
+    if(trend.priceMax||trend.priceMin) calcEditPrices();
+
+    // ===== STEP2: AI生成 =====
+    setProgress(50,'② 商品情報をAI生成中...');
+
+    const trendSection='\n【トレンド情報（メルカリ・ラクマ調査済み）】\n'
+      +'注目キーワード：'+(trend.hotKeywords||[]).join(' ')+'\n'
+      +'相場帯：¥'+(trend.priceMin||0)+'〜¥'+(trend.priceMax||0)+'（中央値¥'+(trend.priceMid||0)+'）\n'
+      +'市場サマリー：'+(trend.summary||'')+'\n'
+      +'※ トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映してください。\n'
+      +'※ 相場帯に基づいて価格を設定してください。';
+
+    const basePrompt='あなたはハイブランド中古商品のコピーライターです。ブランド価値を保ちながらECサイトでクリック率と購入率を高める文章を作成してください。\n\n'
+      +'【絶対禁止ワード】安い/激安/お得/正規品/本物/鑑定済み/ギャランティ/保証/ICチップ/安心/確実/間違いない/ロゴくっきり/型番一致/人気/定番/入手困難/ギャラ付き/ラグジュアリー\n\n'
+      +'【情景コピーのルール】\n・ブランド名は入れない・情景が浮かぶ言葉・詩的、芸術的な表現\n良い例：静かに格を纏う／品は細部に宿る／余裕は小物に出る\n\n'
+      +'【タイトル構造】\n①情景コピー（14文字前後）を【】で囲む ②改行してSEOタイトル（ブランド名 商品形状 素材 カラー）\n'
+      +trendSection+'\n\n'
+      +'【入力情報】\nリペア内容：'+(repairInput||'不明')+'\n気になる状態：'+(conditionInput||'不明')+'\n'
+      +(hasPhotos?'':'ブランド：'+brand+'\n形状：'+shape+'\n\n')
+      +'この商品の出品情報を分析して、以下のJSONのみを返してください。説明・コードブロック記号は一切不要。\n\n'
+      +'{"brandName":"ブランド名","itemShape":"形状","priceHigh":"上振れ価格（数値のみ）","priceLow":"下振れ価格（数値のみ）","productTitle":"【情景コピー14文字前後】\\nSEOタイトル40文字以内","keywords":"SEOワード7〜9個スペース区切り（トレンドKW優先）","keywordsCopy":"SEOワード7〜9個スペース区切り","productDescription":"200文字以内。CVR重視。禁止ワード不可。トレンド反映。","repairContent":"リペア内容をポジティブに表現","repairDetail":"状態をポジティブに補足"}';
+
+    // 写真あり：画像＋テキスト、写真なし：テキストのみ
+    const messages=hasPhotos
+      ? [{role:'user',content:[...editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
+      : [{role:'user',content:basePrompt}];
+
+    const aiRes=await fetch(CLAUDE_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages})
+    });
+    const aiData=await aiRes.json();
+    const aiText=aiData.content.map(i=>i.text||'').join('');
+    const r=JSON.parse(aiText.replace(/```json|```/g,'').trim());
+
+    setProgress(90,'③ フィールドに反映中...');
+
+    if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
+    if(r.itemShape) document.getElementById('e_itemShape').value=r.itemShape;
+    document.getElementById('e_productTitle').value=r.productTitle||'';
+    document.getElementById('e_keywords').value=r.keywords||'';
+    document.getElementById('e_keywordsCopy').value=r.keywordsCopy||'';
+    document.getElementById('e_productDescription').value=r.productDescription||'';
+    document.getElementById('e_repairContent').value=r.repairContent||'';
+    document.getElementById('e_repairDetail').value=r.repairDetail||'';
+    if(r.priceHigh&&!document.getElementById('e_priceHigh').value) document.getElementById('e_priceHigh').value=r.priceHigh;
+    if(r.priceLow&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=r.priceLow;
+    calcEditPrices();
+
+    setProgress(100,'✅ 完了');
+    setTimeout(()=>{
+      document.getElementById('e_progressBar').style.display='none';
+      document.getElementById('e_progressFill').style.width='0%';
+    },1500);
 
   }catch(err){
     document.getElementById('trendLoading').style.display='none';
     document.getElementById('trendEmpty').style.display='block';
-    document.getElementById('trendEmpty').textContent='取得に失敗しました。再度お試しください。';
+    document.getElementById('trendEmpty').textContent='エラーが発生しました。再度お試しください。';
+    const s=document.getElementById('e_aiStatus');s.className='status-msg err';s.textContent='エラー: '+err.message;
+    document.getElementById('e_progressBar').style.display='none';
     console.error(err);
   }
   btn.disabled=false;
@@ -1031,7 +1075,7 @@ function handleEditPhotos(e,type){
         const compressed=canvas.toDataURL('image/jpeg',0.7);
         images.push({base64:compressed.split(',')[1],type:'image/jpeg',dataUrl:compressed});
         const imgEl=document.createElement('img');imgEl.src=compressed;document.getElementById(galleryId).appendChild(imgEl);
-        if(type==='listing'){editListingImages=images;document.getElementById('e_aiBtn').disabled=false;}
+        if(type==='listing'){editListingImages=images;}
         else{editPurchaseImages=images;}
       };
       img.src=ev.target.result;
@@ -1040,54 +1084,7 @@ function handleEditPhotos(e,type){
   });
 }
 
-// ==================== AI自動入力 ====================
-async function generateAI(){
-  if(!editListingImages.length)return;
-  const btn=document.getElementById('e_aiBtn');const status=document.getElementById('e_aiStatus');
-  btn.disabled=true;status.className='status-msg';
-  status.textContent=trendCache?'トレンド反映してAI解析中...':'AI解析中...';
-  const repairInput=document.getElementById('e_repairInputAI').value;
-  const conditionInput=document.getElementById('e_conditionInputAI').value;
-  const imageContents=editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}}));
 
-  // トレンド情報があればプロンプトに注入
-  const trendSection=trendCache
-    ? '\n【トレンド情報（メルカリ・ラクマ調査済み）】\n'
-      +'注目キーワード：'+(trendCache.hotKeywords||[]).join(' ')+'\n'
-      +'相場帯：¥'+(trendCache.priceMin||0)+'〜¥'+(trendCache.priceMax||0)+'（中央値¥'+(trendCache.priceMid||0)+'）\n'
-      +'市場サマリー：'+(trendCache.summary||'')+'\n'
-      +'※ 上記トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映してください。\n'
-      +'※ 相場帯に基づいて価格を設定してください。'
-    : '';
-
-  const prompt='あなたはハイブランド中古商品のコピーライターです。ブランド価値を保ちながらECサイトでクリック率と購入率を高める文章を作成してください。\n'
-    +'\n【絶対禁止ワード】安い/激安/お得/正規品/本物/鑑定済み/ギャランティ/保証/ICチップ/安心/確実/間違いない/ロゴくっきり/型番一致/人気/定番/入手困難/ギャラ付き/ラグジュアリー\n'
-    +'\n【情景コピーのルール】\n・ブランド名は入れない・情景が浮かぶ言葉・説明的な文章は禁止・詩的、芸術的な表現\n良い例：静かに格を纏う／品は細部に宿る／余裕は小物に出る／静かな反骨\n'
-    +'\n【タイトル構造】\n①情景コピー（14文字前後）を【】で囲む ②改行してSEOタイトル（ブランド名 商品形状 素材 カラー）\n例：【静かに格を纏う】\nPRADA レザー トートバッグ A4収納可 ブラック\n'
-    +trendSection
-    +'\n【入力情報】\nリペア内容：'+(repairInput||'不明')+'\n気になる状態：'+(conditionInput||'不明')+'\n'
-    +'\nこの画像の商品を分析して、以下のJSONのみを返してください。説明・コードブロック記号は一切不要。\n'
-    +'\n{"brandName":"ブランド名","itemShape":"商品の形状（例：二つ折り財布）","priceHigh":"相場上振れ価格（数値のみ）","priceLow":"相場下振れ価格（数値のみ）","productTitle":"【情景コピー14文字前後】\\nSEOタイトル40文字以内","keywords":"SEOワード7〜9個スペース区切り（トレンドキーワード優先）","keywordsCopy":"SEOワード7〜9個スペース区切り","productDescription":"200文字以内。CVR重視。禁止ワード使用不可。トレンドを踏まえた表現で。","repairContent":"リペア内容をポジティブに表現","repairDetail":"状態をポジティブに補足"}';
-  try{
-    const res=await fetch(CLAUDE_PROXY,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[...imageContents,{type:'text',text:prompt}]}]})});
-    const data=await res.json();
-    const text=data.content.map(i=>i.text||'').join('');
-    const r=JSON.parse(text.replace(/```json|```/g,'').trim());
-    if(r.brandName)document.getElementById('e_brandName').value=r.brandName;
-    if(r.itemShape)document.getElementById('e_itemShape').value=r.itemShape;
-    document.getElementById('e_productTitle').value=r.productTitle||'';
-    document.getElementById('e_keywords').value=r.keywords||'';
-    document.getElementById('e_keywordsCopy').value=r.keywordsCopy||'';
-    document.getElementById('e_productDescription').value=r.productDescription||'';
-    document.getElementById('e_repairContent').value=r.repairContent||'';
-    document.getElementById('e_repairDetail').value=r.repairDetail||'';
-    if(r.priceHigh)document.getElementById('e_priceHigh').value=r.priceHigh;
-    if(r.priceLow)document.getElementById('e_priceLow').value=r.priceLow;
-    calcEditPrices();
-    status.className='status-msg ok';status.textContent='自動入力完了';
-  }catch(err){status.className='status-msg err';status.textContent='エラーが発生しました';console.error(err);}
-  btn.disabled=false;
-}
 
 // ==================== 商品No採番 ====================
 async function getNextProductNo(){
@@ -1183,8 +1180,7 @@ async function openEdit(id){
   const pg=document.getElementById('e_purchasePhotos');pg.innerHTML='';
   if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;pg.appendChild(img);});}
   const lg=document.getElementById('e_listingPhotos');lg.innerHTML='';
-  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;lg.appendChild(img);});document.getElementById('e_aiBtn').disabled=false;}
-  else{document.getElementById('e_aiBtn').disabled=true;}
+  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;lg.appendChild(img);});}
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   set('e_mainCategory',data.main_category);set('e_subCategory',data.sub_category);
