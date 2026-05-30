@@ -778,10 +778,10 @@ async function fetchTrend(){
   document.getElementById('trendEmpty').style.display='none';
   document.getElementById('trendResult').style.display='none';
   document.getElementById('trendLoading').style.display='flex';
-  document.getElementById('trendBrandLabel').textContent='— '+(brand+' '+shape).trim();
+  document.getElementById('trendBrandLabel').textContent='— '+[brand,shape,freeWord].filter(Boolean).join(' ');
   status.className='status-msg';status.textContent='トレンド検索中...';
 
-  const query=(brand+' '+shape).trim();
+  const query=[brand,shape,freeWord].filter(Boolean).join(' ');
   const now=new Date();
 
   try{
