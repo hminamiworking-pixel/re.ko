@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2);}
     <div class="card-title">最近の商品</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
       <input type="text" id="f_no" placeholder="No." oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'DM Mono',monospace;width:70px;outline:none;"><input type="text" id="f_brand" placeholder="ブランド" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:130px;outline:none;">
-      <input type="text" id="f_shape" placeholder="形状" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:110px;outline:none;">
+      <input type="text" id="f_shelf" placeholder="棚番" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:90px;outline:none;">
       <select id="f_status" onchange="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
         <option value="">ステータス：全て</option>
         <option>仕分け前</option><option>探索</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
@@ -687,6 +687,29 @@ let currentEditData=null;
 let allProductsCache=[];
 let trendCache=null; // トレンド検索結果を保持
 
+const ALL_STATUSES=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリオークション','入金'];
+function statusOptions(current){
+  return ALL_STATUSES.map(s=>`<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
+}
+async function updateStatusInline(sel){
+  const id=sel.dataset.id;
+  const newStatus=sel.value;
+  sel.disabled=true;
+  const {error}=await sb.from('products').update({status:newStatus}).eq('id',id);
+  if(error){alert('更新失敗: '+error.message);sel.disabled=false;return;}
+  // キャッシュ更新
+  const item=allProductsCache.find(d=>d.id===id);
+  if(item)item.status=newStatus;
+  // stat再計算
+  const preList=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前'];
+  const activeList=['出品中','発送前','受け取り評価前'];
+  document.getElementById('statPurchased').textContent=allProductsCache.filter(d=>preList.includes(d.status)).length;
+  document.getElementById('statRepair').textContent=allProductsCache.filter(d=>activeList.includes(d.status)).length;
+  document.getElementById('statListing').textContent=allProductsCache.filter(d=>d.status==='保管中').length;
+  document.getElementById('statSold').textContent=allProductsCache.filter(d=>['エコオク','メルカリオークション','入金'].includes(d.status)).length;
+  document.getElementById('statTotal').textContent=allProductsCache.length;
+  sel.disabled=false;
+}
 function statusBadge(s){
   const map={'仕分け前':'badge-gray','探索':'badge-gray','リペア前':'badge-yellow','外注リペア':'badge-yellow','撮影前':'badge-yellow','画像加工前':'badge-yellow','出品前':'badge-yellow','出品中':'badge-blue','発送前':'badge-blue','受け取り評価前':'badge-blue','保管中':'badge-gray','エコオク':'badge-green','メルカリオークション':'badge-green','入金':'badge-green'};
   return `<span class="badge ${map[s]||'badge-gray'}">${s||'-'}</span>`;
@@ -1204,13 +1227,13 @@ async function deleteProduct(id,no){
 function applyDashFilter(){
   const no=(document.getElementById('f_no').value||'').trim();
   const brand=(document.getElementById('f_brand').value||'').trim().toLowerCase();
-  const shape=(document.getElementById('f_shape').value||'').trim().toLowerCase();
+  const shelf=(document.getElementById('f_shelf').value||'').trim().toLowerCase();
   const status=document.getElementById('f_status').value;
   const dateFrom=document.getElementById('f_dateFrom').value;const dateTo=document.getElementById('f_dateTo').value;
   const filtered=allProductsCache.filter(d=>{
     if(no&&!String(d.product_no||'').includes(no))return false;
     if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
-    if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
+    if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
     if(status&&d.status!==status)return false;
     const cd=d.created_at?d.created_at.slice(0,10):'';
     if(dateFrom&&cd<dateFrom)return false;if(dateTo&&cd>dateTo)return false;return true;
@@ -1218,10 +1241,10 @@ function applyDashFilter(){
   document.getElementById('f_count').textContent=`${filtered.length}件`;
   document.getElementById('recentTable').innerHTML=filtered.map(d=>{
     const thumb=d.listing_photo_urls&&d.listing_photo_urls[0]?`<img class="thumb" src="${d.listing_photo_urls[0]}">`:`<div class="thumb-empty">なし</div>`;
-    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${statusBadge(d.status)}</td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
+    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
   }).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>`;
 }
-function clearDashFilter(){['f_no','f_brand','f_shape','f_dateFrom','f_dateTo'].forEach(id=>document.getElementById(id).value='');document.getElementById('f_status').value='';applyDashFilter();}
+function clearDashFilter(){['f_no','f_brand','f_shelf','f_dateFrom','f_dateTo'].forEach(id=>document.getElementById(id).value='');document.getElementById('f_status').value='';applyDashFilter();}
 
 // ==================== シートフィルター ====================
 let salesRawData=[];
@@ -1279,7 +1302,7 @@ async function loadDashboard(){
   document.getElementById('statProfit').textContent='¥'+totalProfit.toLocaleString();
   document.getElementById('recentTable').innerHTML=data.slice(0,10).map(d=>{
     const thumb=d.listing_photo_urls&&d.listing_photo_urls[0]?`<img class="thumb" src="${d.listing_photo_urls[0]}">`:`<div class="thumb-empty">なし</div>`;
-    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${statusBadge(d.status)}</td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
+    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
   }).join('');
 }
 
