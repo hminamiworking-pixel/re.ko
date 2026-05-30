@@ -553,7 +553,8 @@ tr:hover td{background:var(--surface2);}
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-ai" id="e_analyzeBtn" onclick="analyzeTrendAndFill()" style="background:linear-gradient(135deg,var(--teal),var(--purple));padding:10px 22px;font-size:13px;">🔍✨ トレンド解析＆自動入力</button>
+        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">🔍 トレンド検索</button>
+        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()">✨ AI自動入力</button>
         <span class="status-msg" id="e_aiStatus"></span>
       </div>
       <div id="e_progressBar" style="display:none;margin-top:10px;background:var(--surface2);border-radius:20px;height:4px;overflow:hidden;">
@@ -749,34 +750,26 @@ function setProgress(pct, msg){
   if(msg){const s=document.getElementById('e_aiStatus');s.className='status-msg';s.textContent=msg;}
 }
 
-async function analyzeTrendAndFill(){
+// ==================== トレンド検索 ====================
+async function fetchTrend(){
   const brand=document.getElementById('e_brandName').value.trim();
   const shape=document.getElementById('e_itemShape').value.trim();
-  const repairInput=document.getElementById('e_repairInputAI').value.trim();
-  const conditionInput=document.getElementById('e_conditionInputAI').value.trim();
-  const hasPhotos=editListingImages.length>0;
-
   if(!brand&&!shape){alert('ブランド名または形状を入力してください');return;}
 
-  const btn=document.getElementById('e_analyzeBtn');
+  const btn=document.getElementById('e_trendBtn');
+  const status=document.getElementById('e_aiStatus');
   btn.disabled=true;
-  document.getElementById('e_progressBar').style.display='block';
   document.getElementById('trendEmpty').style.display='none';
   document.getElementById('trendResult').style.display='none';
   document.getElementById('trendLoading').style.display='flex';
   document.getElementById('trendBrandLabel').textContent='— '+(brand+' '+shape).trim();
+  status.className='status-msg';status.textContent='トレンド検索中...';
 
   const query=(brand+' '+shape).trim();
   const now=new Date();
 
   try{
-    // ===== STEP1: トレンド検索 =====
-    setProgress(15,'① メルカリ・ラクマのトレンドを検索中...');
-
-    const trendPrompt='あなたは日本のフリマアプリ（メルカリ・ラクマ）の中古ブランド品市場に詳しいアナリストです。\n'
-      +'ウェブ検索で「'+query+' メルカリ 売れ筋 相場 '+now.getFullYear()+'」を調べ、以下のJSONのみを返してください。説明・コードブロック記号は不要。\n\n'
-      +'{"hotKeywords":["kw1","kw2","kw3","kw4","kw5"],"priceMin":数値,"priceMid":数値,"priceMax":数値,"summary":"120文字以内の需要傾向"}\n\n'
-      +'検索クエリ：「'+query+' メルカリ 売れ筋 相場 2026」「'+query+' ラクマ 人気 トレンド」';
+    const trendPrompt='あなたは日本のフリマアプリ（メルカリ・ラクマ）の中古ブランド品市場に詳しいアナリストです。\n'+'ウェブ検索で「'+query+' メルカリ 売れ筋 相場 '+now.getFullYear()+'」を調べ、以下のJSONのみを返してください。\n\n'+'{"hotKeywords":["kw1","kw2","kw3","kw4","kw5"],"priceMin":0,"priceMid":0,"priceMax":0,"summary":""}\n\n'+'検索クエリ：「'+query+' メルカリ 売れ筋 相場 2026」「'+query+' ラクマ 人気 トレンド」';
 
     const trendRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
@@ -793,7 +786,6 @@ async function analyzeTrendAndFill(){
     const trend=JSON.parse(trendText.replace(/```json|```/g,'').trim());
     trendCache=trend;
 
-    // トレンドパネル表示
     const tagsEl=document.getElementById('trendHotTags');
     tagsEl.innerHTML='';
     (trend.hotKeywords||[]).forEach((kw,i)=>{
@@ -812,45 +804,66 @@ async function analyzeTrendAndFill(){
     document.getElementById('trendLoading').style.display='none';
     document.getElementById('trendResult').style.display='block';
 
-    // 相場を価格フィールドに反映（未入力時のみ）
     if(trend.priceMax&&!document.getElementById('e_priceHigh').value) document.getElementById('e_priceHigh').value=trend.priceMax;
     if(trend.priceMin&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=trend.priceMin;
     if(trend.priceMax||trend.priceMin) calcEditPrices();
 
-    // ===== STEP2: AI生成（レートリミット対策で3秒待機）=====
-    setProgress(40,'⏳ 少々お待ちください...');
-    await new Promise(r=>setTimeout(r,3000));
-    setProgress(50,'② 商品情報をAI生成中...');
+    status.className='status-msg ok';status.textContent='トレンド取得完了';
+  }catch(err){
+    document.getElementById('trendLoading').style.display='none';
+    document.getElementById('trendEmpty').style.display='block';
+    document.getElementById('trendEmpty').textContent='エラーが発生しました。再度お試しください。';
+    status.className='status-msg err';status.textContent='エラー: '+err.message;
+    console.error(err);
+  }
+  btn.disabled=false;
+}
 
-    const trendSection='\n【トレンド情報（メルカリ・ラクマ調査済み）】\n'
-      +'注目キーワード：'+(trend.hotKeywords||[]).join(' ')+'\n'
-      +'相場帯：¥'+(trend.priceMin||0)+'〜¥'+(trend.priceMax||0)+'（中央値¥'+(trend.priceMid||0)+'）\n'
-      +'市場サマリー：'+(trend.summary||'')+'\n'
-      +'※ トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映してください。\n'
-      +'※ 相場帯に基づいて価格を設定してください。';
+// ==================== AI自動入力 ====================
+async function generateAI(){
+  const brand=document.getElementById('e_brandName').value.trim();
+  const shape=document.getElementById('e_itemShape').value.trim();
+  const repairInput=document.getElementById('e_repairInputAI').value.trim();
+  const conditionInput=document.getElementById('e_conditionInputAI').value.trim();
+  const hasPhotos=editListingImages.length>0;
 
-    // STEP2プロンプト（トークン節約のため簡潔に）
+  if(!brand&&!shape&&!hasPhotos){alert('ブランド名・形状・写真のいずれかを入力してください');return;}
+
+  const btn=document.getElementById('e_aiBtn');
+  const status=document.getElementById('e_aiStatus');
+  btn.disabled=true;
+  document.getElementById('e_progressBar').style.display='block';
+  setProgress(10,'AI生成中...');
+
+  try{
+    const trendSection=trendCache
+      ? '\n【トレンド情報（メルカリ・ラクマ調査済み）】\n'
+        +'注目キーワード：'+(trendCache.hotKeywords||[]).join(' ')+'\n'
+        +'相場帯：¥'+(trendCache.priceMin||0)+'〜¥'+(trendCache.priceMax||0)+'（中央値¥'+(trendCache.priceMid||0)+'）\n'
+        +'市場サマリー：'+(trendCache.summary||'')+'\n'
+        +'※ トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映。相場帯で価格を設定。'
+      : '';
+
     const brandInfo=hasPhotos?'':(brand+' '+shape+' ');
-    const basePrompt='中古ブランド品ECコピーライター。禁止語なし。\n'
+    const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
       +'タイトル形式：【情景コピー14文字】\nブランド名 形状 素材 カラー\n'
       +trendSection+'\n'
       +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
-      +'JSONのみ返答：{"brandName":"","itemShape":"","priceHigh":0,"priceLow":0,"productTitle":"","keywords":"","keywordsCopy":"","productDescription":"","repairContent":"","repairDetail":""}';
+      +'JSONのみ返答：{"brandName":"","itemShape":"","priceHigh":0,"priceLow":0,"productTitle":"","keywords":"","keywordsCopy":"","productDescription":"","repairContent":"","repairDetail":""}"';
 
-    // 写真あり：画像＋テキスト、写真なし：テキストのみ
     const messages=hasPhotos
       ? [{role:'user',content:[...editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
       : [{role:'user',content:basePrompt}];
 
+    setProgress(50,'生成中...');
     const aiRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages})
     });
     const aiData=await aiRes.json();
-    // エラーレスポンス確認
     if(!aiData.content){
       const errMsg=aiData.error?.message||JSON.stringify(aiData);
       throw new Error('AI生成エラー: '+errMsg);
@@ -859,11 +872,10 @@ async function analyzeTrendAndFill(){
     if(!aiText) throw new Error('AI応答が空です');
     const cleaned=aiText.replace(/```json|```/g,'').trim();
     const jsonMatch=cleaned.match(/\{[\s\S]*\}/);
-    if(!jsonMatch) throw new Error('JSONが見つかりません: '+cleaned.slice(0,100));
+    if(!jsonMatch) throw new Error('JSONが見つかりません');
     const r=JSON.parse(jsonMatch[0]);
 
-    setProgress(90,'③ フィールドに反映中...');
-
+    setProgress(90,'反映中...');
     if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
     if(r.itemShape) document.getElementById('e_itemShape').value=r.itemShape;
     document.getElementById('e_productTitle').value=r.productTitle||'';
@@ -876,17 +888,15 @@ async function analyzeTrendAndFill(){
     if(r.priceLow&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=r.priceLow;
     calcEditPrices();
 
-    setProgress(100,'✅ 完了');
+    setProgress(100,'');
+    status.className='status-msg ok';status.textContent='✅ 自動入力完了'+(trendCache?' (トレンド反映済み)':'');
     setTimeout(()=>{
       document.getElementById('e_progressBar').style.display='none';
       document.getElementById('e_progressFill').style.width='0%';
     },1500);
 
   }catch(err){
-    document.getElementById('trendLoading').style.display='none';
-    document.getElementById('trendEmpty').style.display='block';
-    document.getElementById('trendEmpty').textContent='エラーが発生しました。再度お試しください。';
-    const s=document.getElementById('e_aiStatus');s.className='status-msg err';s.textContent='エラー: '+err.message;
+    status.className='status-msg err';status.textContent='エラー: '+err.message;
     document.getElementById('e_progressBar').style.display='none';
     console.error(err);
   }
