@@ -470,7 +470,7 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="grid">
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
-        <div class="field"><label>中カテゴリー</label><select id="e_subCategory"><option value="">選択</option><option>バッグ</option><option>財布</option><option>アクセサリー</option><option>衣類</option><option>シューズ</option></select></div>
+        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateListingTemplate()"><option value="">選択</option><option>バッグ</option><option>財布</option><option>アクセサリー</option><option>衣類</option><option>シューズ</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
         <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
@@ -599,6 +599,16 @@ tr:hover td{background:var(--surface2);}
         <div class="field full"><label>リペア内容（出品用）</label><textarea id="e_repairContent" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>リペア内容（詳細）</label><textarea id="e_repairDetail" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>サイズ詳細</label><textarea id="e_sizeDetail"></textarea></div>
+      </div>
+
+      <!-- ===== 出品テンプレート ===== -->
+      <div id="listingTemplateSection" style="display:none;margin-top:20px;">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>📋 出品テンプレート（<span id="templateCatLabel"></span>）</span>
+          <button onclick="copyTemplate()" style="padding:4px 14px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--teal);cursor:pointer;font-weight:600;">📋 コピー</button>
+        </div>
+        <div id="listingTemplateBody" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;font-size:12px;font-family:'DM Mono',monospace;line-height:1.9;white-space:pre-wrap;word-break:break-all;color:var(--text2);user-select:none;pointer-events:none;"></div>
+        <div id="templateCopyMsg" style="font-size:11px;color:var(--green);margin-top:6px;display:none;">✅ コピーしました</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveStage(2)">保存</button>
@@ -1269,6 +1279,7 @@ async function openEdit(id){
   const stepMap={'仕分け前':1,'探索':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリオークション':3,'入金':3};
   switchStep(stepMap[data.status]||1);
   document.getElementById('editModal').classList.add('open');
+  setTimeout(()=>{setupTemplateListeners();updateListingTemplate();},100);
 }
 function closeEditModal(){document.getElementById('editModal').classList.remove('open');editingId=null;currentEditData=null;}
 
@@ -1381,6 +1392,181 @@ function buildSheetTable(data){
     rows+=`<tr class="row-year"><td class="label">${yr}年</td><td class="label"></td><td class="label"></td><td>¥${yrPS.toLocaleString()}</td><td>¥${yrRev.toLocaleString()}</td><td class="${negClass(yrProfit)}">¥${yrProfit.toLocaleString()}</td><td>¥${yrMid.toLocaleString()}</td><td>¥${yrLow.toLocaleString()}</td><td>¥${yrShip.toLocaleString()}</td><td class="${yrRate!==null?(yrRate<0?'neg':'pos'):''}">${yrRate!==null?yrRate+'%':'-'}</td><td>${yrPC}</td><td>${yrSC}</td></tr>${monthRows}`;
   });
   document.getElementById('salesSheetBody').innerHTML=rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px;font-family:\'Noto Sans JP\',sans-serif;">データなし</td></tr>';
+}
+
+
+// ==================== 出品テンプレート ====================
+const LISTING_TEMPLATES = {
+  '財布': (d) => `【 description 】
+・${d.description||''}
+━━━━━━━━━━━━━━━━━━━
+【 size 】
+・縦：約cm
+・横：約cm
+・マチ：約cm
+━━━━━━━━━━━━━━━━━━━
+【 details 】
+開閉仕様：
+・ラウンドファスナー
+・L字ファスナー
+・フラップ（かぶせ）
+・スナップボタン
+・Wホック
+・がま口
+・ベルト開閉
+・プッシュロック式
+・オープン開閉
+・ダブルファスナー
+・札入れ×
+・小銭入れ×
+・カードポケット×
+━━━━━━━━━━━━━━━━━━━
+【 color 】
+・ブラック
+・グレー
+・ホワイト
+・ブルー
+・ネイビー
+・グリーン
+・カーキ
+・ブラウン
+・レッド
+・オレンジ
+・イエロー
+・シルバー
+・ゴールド
+・パープル
+・ベージュ
+・マルチカラー
+・キャメル
+・スケルトン、クリア
+・ピンク
+━━━━━━━━━━━━━━━━━━━
+【 material 】
+・牛革（カウレザー）
+・牛革（カーフスキン）
+・牛革（キップスキン）
+・牛革（ステアスキン）
+・牛革（ブルスキン）
+・羊革（ラムレザー）
+・馬革（ホースハイド）
+・豚革（ピッグスキン）
+・山羊革（ゴートスキン）
+・サフィアーノレザー
+・レザー
+・本革
+・ワニ（クロコダイルレザー）
+・ウール（毛、羊毛含む）
+・トカゲ（リザードレザー）
+・蛇（パイソンレザー）
+・ダチョウ（オーストリッチレザー）
+・鹿革（ディアスキンレザー)
+・ミンク
+・エキゾチックレザー
+・エナメル革（パテントレザー）
+・牛床革
+・合皮
+・PVC
+・ナイロン
+・ポリエステル
+・キャンバス
+・その他
+・不明
+━━━━━━━━━━━━━━━━━━━
+【 accessories 】
+・タグ
+・ギャランティカード
+・保存袋
+・説明書
+・箱
+・ショルダーストラップ
+・ショルダーストラップ（社外品）
+・チャーム
+・ポーチ
+・リボン
+・本体のみ
+━━━━━━━━━━━━━━━━━━━
+【 condition 】
+SA：【使用感が非常に少なく綺麗】
+A：【使用感はあるが綺麗】
+AB：【使用感はあるが比較的良好】
+B：【ダメージ・使用感あり】
+※状態ランク詳細はショップ情報をご確認ください。
+━━━━━━━━━━━━━━━━━━━
+【 maintenance 】
+・${d.maintenance||''}
+━━━━━━━━━━━━━━━━━━━
+【 details 】
+・${d.repairDetail||''}
+━━━━━━━━━━━━━━━━━━━
+・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
+"もう一度、美しく使える"品質を大切に、
+ブランド本来の魅力を活かしながら整えております。
+仕上がりは実物画像をご確認ください。 
+━━━━━━━━━━━━━━━━━━━
+【 serial / model no. 】
+・　/
+━━━━━━━━━━━━━━━━━━━
+【 source 】
+・業者オークション / 国内リユースショップ
+━━━━━━━━━━━━━━━━━━━
+【 notice 】
+※中古品の特性をご理解のうえご購入ください。 
+気になる点がございましたら、お気軽にコメントください！
+━━━━━━━━━━━━━━━━━━━
+【 item no. 】
+・${d.itemNo||''}
+━━━━━━━━━━━━━━━━━━━`
+};
+
+function getTemplateData(){
+  const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
+  const checked=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
+  return {
+    description: (document.getElementById('e_productDescription')||{}).value||'',
+    maintenance: checked.length ? checked.map(v=>'・'+v).join('\n') : '',
+    repairDetail: (document.getElementById('e_repairDetail')||{}).value||'',
+    itemNo: editingId&&currentEditData ? String(currentEditData.product_no||'').padStart(4,'0') : ''
+  };
+}
+
+function updateListingTemplate(){
+  const cat = (document.getElementById('e_subCategory')||{}).value||'';
+  const sec = document.getElementById('listingTemplateSection');
+  const body = document.getElementById('listingTemplateBody');
+  const label = document.getElementById('templateCatLabel');
+  if(!sec||!body) return;
+  if(!LISTING_TEMPLATES[cat]){
+    sec.style.display='none';
+    return;
+  }
+  sec.style.display='block';
+  label.textContent=cat;
+  body.textContent=LISTING_TEMPLATES[cat](getTemplateData());
+}
+
+function copyTemplate(){
+  const body=document.getElementById('listingTemplateBody');
+  if(!body||!body.textContent) return;
+  navigator.clipboard.writeText(body.textContent).then(()=>{
+    const msg=document.getElementById('templateCopyMsg');
+    msg.style.display='block';
+    setTimeout(()=>msg.style.display='none',2000);
+  });
+}
+
+// 各入力フィールドの変更をテンプレートに反映
+function setupTemplateListeners(){
+  const fields=['e_productDescription','e_repairDetail'];
+  fields.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',updateListingTemplate);
+  });
+  const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
+  repairIds.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change',updateListingTemplate);
+  });
 }
 
 // ==================== ダッシュボード ====================
