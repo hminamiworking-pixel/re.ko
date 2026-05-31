@@ -44,10 +44,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .btn{padding:9px 18px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:500;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
 .btn-primary{background:var(--text);color:#fff;}
 .btn-primary:hover{opacity:.85;}
-.btn-ai{background:var(--purple);color:#fff;}
-.btn-ai:hover{opacity:.85;}
+.btn-ai{background:#f2f2f0;color:#1a1a18;border:1px solid #d0d0cc;}
+.btn-ai:hover{background:#e8e8e5;}
 .btn-ai:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
-.btn-trend{background:var(--teal);color:#fff;}
+.btn-trend{background:#3d3d3b;color:#fff;}
 .btn-trend:hover{opacity:.85;}
 .btn-trend:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
 .btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);}
@@ -999,8 +999,8 @@ function drawBarListingSold(){
   destroyChart('chartListingSold');
   chartInstances['chartListingSold']=new Chart(document.getElementById('chartListingSold').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'出品数',data:Object.values(m).map(v=>v.listingCount),backgroundColor:'rgba(26,77,143,0.75)',borderRadius:3},
-      {label:'売却数',data:Object.values(m).map(v=>v.soldCount),backgroundColor:'rgba(45,125,79,0.75)',borderRadius:3},
+      {label:'出品数',data:Object.values(m).map(v=>v.listingCount),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
+      {label:'売却数',data:Object.values(m).map(v=>v.soldCount),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
     ]},options:barOpts(v=>v+'点')
   });
 }
@@ -1009,7 +1009,7 @@ function drawBarPurchaseTotal(){
   const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
   destroyChart('chartPurchaseTotal');
   chartInstances['chartPurchaseTotal']=new Chart(document.getElementById('chartPurchaseTotal').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:Object.values(m).map(v=>v.purchaseSum),backgroundColor:'rgba(90,63,160,0.75)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:Object.values(m).map(v=>v.purchaseSum),backgroundColor:'rgba(139,101,230,0.85)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -1019,9 +1019,9 @@ function drawBarPurchaseStats(){
   destroyChart('chartPurchaseStats');
   chartInstances['chartPurchaseStats']=new Chart(document.getElementById('chartPurchaseStats').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'平均',data:Object.values(m).map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:'rgba(26,77,143,0.75)',borderRadius:3},
-      {label:'最大',data:Object.values(m).map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:'rgba(196,43,43,0.6)',borderRadius:3},
-      {label:'最小',data:Object.values(m).map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:'rgba(45,125,79,0.6)',borderRadius:3},
+      {label:'平均',data:Object.values(m).map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
+      {label:'最大',data:Object.values(m).map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:'rgba(255,99,120,0.85)',borderRadius:3},
+      {label:'最小',data:Object.values(m).map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
     ]},options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -1030,7 +1030,7 @@ function drawBarAvgSale(){
   const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
   destroyChart('chartAvgSale');
   chartInstances['chartAvgSale']=new Chart(document.getElementById('chartAvgSale').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:Object.values(m).map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(200,93,26,0.75)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:Object.values(m).map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(255,171,64,0.85)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
