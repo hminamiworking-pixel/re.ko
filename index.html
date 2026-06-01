@@ -1166,6 +1166,56 @@ function handleEditPhotos(e,type){
 
 
 
+
+// ==================== Storage画像アップロード ====================
+async function uploadImagesToStorage(images, productNo, type){
+  // images: [{base64, type, dataUrl}] の配列
+  // type: 'purchase' or 'listing'
+  const urls = [];
+  for(let i=0; i<images.length; i++){
+    const img = images[i];
+    const ext = 'jpg';
+    const path = `${productNo}/${type}_${Date.now()}_${i}.${ext}`;
+    // Base64をBlobに変換
+    const byteStr = atob(img.base64);
+    const arr = new Uint8Array(byteStr.length);
+    for(let j=0; j<byteStr.length; j++) arr[j] = byteStr.charCodeAt(j);
+    const blob = new Blob([arr], {type: img.type||'image/jpeg'});
+    const {data, error} = await sb.storage.from('product-images').upload(path, blob, {
+      contentType: img.type||'image/jpeg',
+      upsert: true
+    });
+    if(error){ console.error('Storage upload error:', error); continue; }
+    const {data: urlData} = sb.storage.from('product-images').getPublicUrl(path);
+    urls.push(urlData.publicUrl);
+  }
+  return urls;
+}
+
+// Base64 dataUrl を Storage URLに変換（新規登録用）
+async function uploadDataUrlsToStorage(dataUrls, productNo, type){
+  const urls = [];
+  for(let i=0; i<dataUrls.length; i++){
+    const dataUrl = dataUrls[i];
+    if(!dataUrl.startsWith('data:')) { urls.push(dataUrl); continue; } // すでにURL
+    const [header, base64] = dataUrl.split(',');
+    const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const ext = 'jpg';
+    const path = `${productNo}/${type}_${Date.now()}_${i}.${ext}`;
+    const byteStr = atob(base64);
+    const arr = new Uint8Array(byteStr.length);
+    for(let j=0; j<byteStr.length; j++) arr[j] = byteStr.charCodeAt(j);
+    const blob = new Blob([arr], {type: mimeType});
+    const {data, error} = await sb.storage.from('product-images').upload(path, blob, {
+      contentType: mimeType, upsert: true
+    });
+    if(error){ console.error('Storage upload error:', error); continue; }
+    const {data: urlData} = sb.storage.from('product-images').getPublicUrl(path);
+    urls.push(urlData.publicUrl);
+  }
+  return urls;
+}
+
 // ==================== 商品No採番 ====================
 async function getNextProductNo(){
   const {data}=await sb.from('products').select('product_no').order('product_no',{ascending:false}).limit(1);
@@ -1177,7 +1227,14 @@ async function getNextProductNo(){
 async function saveNewProduct(){
   const status=document.getElementById('r_saveStatus');status.className='status-msg';status.textContent='保存中...';
   const productNo=await getNextProductNo();
-  const data={product_no:productNo,photo_urls:registerImages.length?registerImages:null,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,shelf_no:document.getElementById('r_shelfNo').value,status:'仕分け前'};
+  // 写真をStorageにアップロード
+  let photoUrls=null;
+  if(registerImages.length){
+    status.textContent='写真をアップロード中...';
+    const imgs=registerImages.map(url=>{const[h,b]=url.split(',');return{base64:b,type:h.match(/:(.*?);/)?.[1]||'image/jpeg'};});
+    photoUrls=await uploadImagesToStorage(imgs,productNo,'purchase');
+  }
+  const data={product_no:productNo,photo_urls:photoUrls,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,shelf_no:document.getElementById('r_shelfNo').value,status:'仕分け前'};
   const {error}=await sb.from('products').insert(data);
   if(error){status.className='status-msg err';status.textContent='エラー: '+error.message;}
   else{status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;setTimeout(()=>status.textContent='',4000);}
@@ -1189,18 +1246,26 @@ async function saveStage(step,nextStep){
   const statusEl=document.getElementById(`e_status${step}`);statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
   if(step===1){
-    const newPhotos=editPurchaseImages.map(i=>i.dataUrl);
     updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,free_word:document.getElementById('e_freeWord').value,shelf_no:document.getElementById('e_shelfNo').value};
-    if(newPhotos.length)updates.photo_urls=newPhotos;
+    if(editPurchaseImages.length){
+      statusEl.textContent='写真をアップロード中...';
+      const productNo=currentEditData?.product_no||'unknown';
+      const urls=await uploadImagesToStorage(editPurchaseImages,productNo,'purchase');
+      if(urls.length) updates.photo_urls=urls;
+    }
     if(nextStep)updates.status='撮影前';
   }
   if(step===2){
-    const listingPhotos=editListingImages.map(i=>i.dataUrl);
     const ph=Number(document.getElementById('e_priceHigh').value)||null;const pl=Number(document.getElementById('e_priceLow').value)||null;const mid=ph&&pl?Math.round((ph+pl)/2):null;
     const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
     const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
     updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,sales_channel:document.getElementById('e_salesChannel').value,listing_date:document.getElementById('e_listingDate').value||null,warehouse_place:document.getElementById('e_warehousePlace').value,price_high:ph,price_low:pl,price_mid:mid,price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
-    if(listingPhotos.length)updates.listing_photo_urls=listingPhotos;
+    if(editListingImages.length){
+      statusEl.textContent='写真をアップロード中...';
+      const productNo=currentEditData?.product_no||'unknown';
+      const urls=await uploadImagesToStorage(editListingImages,productNo,'listing');
+      if(urls.length) updates.listing_photo_urls=urls;
+    }
     if(nextStep)updates.status='出品中';
   }
   if(step===3){
@@ -1972,7 +2037,7 @@ function setupTemplateListeners(){
 
 // ==================== ダッシュボード ====================
 async function loadDashboard(){
-  const {data}=await sb.from('products').select('*').order('product_no',{ascending:false});if(!data)return;
+  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,listing_photo_urls,profit_gross').order('product_no',{ascending:false});if(!data)return;
   allProductsCache=data;
   document.getElementById('statTotal').textContent=data.length;
   const preList=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前'];
@@ -1991,7 +2056,7 @@ async function loadDashboard(){
 
 // ==================== 商品一覧 ====================
 async function loadProducts(){
-  const {data}=await sb.from('products').select('*').order('product_no',{ascending:false});if(!data)return;
+  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status').order('product_no',{ascending:false});if(!data)return;
   document.getElementById('productsTable').innerHTML=data.map(d=>`<tr><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class=\"status-inline\" data-id=\"${d.id}\" onchange=\"updateStatusInline(this)\" style=\"padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;\">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`).join('');
 }
 
@@ -2025,7 +2090,7 @@ function clearSalesListFilter(){
 function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.getFullYear(),0,1);return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);}
 
 async function loadSales(){
-  const {data}=await sb.from('products').select('*').order('created_at',{ascending:true});if(!data)return;
+  const {data}=await sb.from('products').select('id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category').order('created_at',{ascending:true});if(!data)return;
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
