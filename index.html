@@ -1413,7 +1413,7 @@ function buildSheetTable(data){
     // 仕入れは登録日で集計
     const cd=d.created_at?d.created_at.slice(0,10):null;
     if(cd){
-      const yr=cd.slice(0,4);const mo=cd.slice(5,7);const wk='第'+getWeekNumber(cd)+'週';
+      const yr=cd.slice(0,4);const mo=cd.slice(5,7);const wk=getMonthWeek(cd)+'週';
       if(!tree[yr])tree[yr]={months:{}};
       if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
       if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0,priceMid:0,priceLow:0,shipping:0};
@@ -1422,7 +1422,7 @@ function buildSheetTable(data){
     }
     // 売却は売却日で集計
     if(d.sold_date){
-      const sd=d.sold_date;const yr=sd.slice(0,4);const mo=sd.slice(5,7);const wk='第'+getWeekNumber(sd)+'週';
+      const sd=d.sold_date;const yr=sd.slice(0,4);const mo=sd.slice(5,7);const wk=getMonthWeek(sd)+'週';
       if(!tree[yr])tree[yr]={months:{}};
       if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
       if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0,priceMid:0,priceLow:0,shipping:0};
@@ -2087,6 +2087,7 @@ function clearSalesListFilter(){
   document.getElementById('sl_platform').value='';document.getElementById('sl_soldTo').value='';
   renderSalesTable(salesListCache);
 }
+function getMonthWeek(dateStr){const d=new Date(dateStr);return Math.ceil(d.getDate()/7);}
 function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.getFullYear(),0,1);return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);}
 
 async function loadSales(){
