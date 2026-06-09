@@ -192,6 +192,9 @@ tr:hover td{background:var(--surface2);}
 .sales-tab{padding:6px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:12px;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
 .sales-tab.active{background:var(--text);color:#fff;border-color:var(--text);}
 .thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);display:block;}
+.photo-wrap{position:relative;display:inline-block;}
+.photo-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#c42b2b;color:#fff;border:none;cursor:pointer;font-size:11px;line-height:18px;text-align:center;padding:0;z-index:1;display:flex;align-items:center;justify-content:center;}
+.photo-del:hover{background:#a01f1f;}
 .thumb-empty{width:44px;height:44px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);}
 </style>
 </head>
@@ -267,7 +270,7 @@ tr:hover td{background:var(--surface2);}
       <div class="field"><label>出品アカウント</label>
         <select id="r_listingAccount">
           <option value="">選択</option>
-          <option>ラビドア(隆吾)</option><option>ラビスノ(みゆき)</option><option>メルカリオークション</option><option>メルカリ個人アカウント</option>
+          <option>ラビドラ(隆吾)</option><option>ラビスノ(みゆき)</option><option>メルカリオークション</option><option>メルカリ個人アカウント</option>
         </select>
       </div>
       <div class="field"><label>ブランド名</label><input type="text" id="r_brandName"></div>
@@ -488,7 +491,7 @@ tr:hover td{background:var(--surface2);}
         </div>
         <div class="field"><label>出品アカウント</label>
           <select id="e_listingAccount"><option value="">選択</option>
-            <option>ラビドア(隆吾)</option><option>ラビスノ(みゆき)</option><option>メルカリオークション</option><option>メルカリ個人アカウント</option>
+            <option>ラビドラ(隆吾)</option><option>ラビスノ(みゆき)</option><option>メルカリオークション</option><option>メルカリ個人アカウント</option>
           </select>
         </div>
         <div class="field"><label>ブランド名</label><input type="text" id="e_brandName"></div>
@@ -1222,6 +1225,39 @@ async function uploadDataUrlsToStorage(dataUrls, productNo, type){
   return urls;
 }
 
+
+// ==================== 写真削除 ====================
+async function deletePhoto(type, index, productId){
+  if(!confirm('この写真を削除しますか？'))return;
+  const col = type==='purchase' ? 'photo_urls' : 'listing_photo_urls';
+  // 現在のDBデータを取得
+  const {data} = await sb.from('products').select(col).eq('id', productId).single();
+  if(!data) return;
+  const urls = data[col] || [];
+  // Storage上のファイルも削除（URLの場合）
+  const url = urls[index];
+  if(url && url.includes('product-images')){
+    const path = url.split('/product-images/')[1];
+    if(path) await sb.storage.from('product-images').remove([decodeURIComponent(path)]);
+  }
+  // 配列から削除してDB更新
+  const newUrls = urls.filter((_,i)=>i!==index);
+  await sb.from('products').update({[col]: newUrls.length ? newUrls : null}).eq('id', productId);
+  // currentEditDataも更新して再描画
+  currentEditData[col] = newUrls;
+  // ギャラリー再描画
+  const galleryId = type==='purchase' ? 'e_purchasePhotos' : 'e_listingPhotos';
+  const gallery = document.getElementById(galleryId);
+  gallery.innerHTML = '';
+  newUrls.forEach((u,i)=>{
+    const wrap=document.createElement('div');wrap.className='photo-wrap';
+    const img=document.createElement('img');img.src=u;
+    const del=document.createElement('button');del.className='photo-del';del.textContent='×';
+    del.onclick=()=>deletePhoto(type,i,productId);
+    wrap.appendChild(img);wrap.appendChild(del);gallery.appendChild(wrap);
+  });
+}
+
 // ==================== 商品No採番 ====================
 async function getNextProductNo(){
   const {data}=await sb.from('products').select('product_no').order('product_no',{ascending:false}).limit(1);
@@ -1329,9 +1365,9 @@ async function openEdit(id){
   document.getElementById('trendBrandLabel').textContent='';
 
   const pg=document.getElementById('e_purchasePhotos');pg.innerHTML='';
-  if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;pg.appendChild(img);});}
+  if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach((url,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=url;const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.onclick=()=>deletePhoto('purchase',i,data.id);wrap.appendChild(img);wrap.appendChild(del);pg.appendChild(wrap);});}
   const lg=document.getElementById('e_listingPhotos');lg.innerHTML='';
-  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;lg.appendChild(img);});}
+  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach((url,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=url;const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.onclick=()=>deletePhoto('listing',i,data.id);wrap.appendChild(img);wrap.appendChild(del);lg.appendChild(wrap);});}
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   set('e_mainCategory',data.main_category);set('e_subCategory',data.sub_category);
