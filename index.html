@@ -251,7 +251,7 @@ tr:hover td{background:var(--surface2);}
         <select id="r_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select>
       </div>
       <div class="field"><label>中カテゴリー</label>
-        <select id="r_subCategory" onchange="updateShapeOptions('r_subCategory','r_itemShape')"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>指輪/リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>ハット</option><option>靴</option></select>
+        <select id="r_subCategory" onchange="updateShapeOptions('r_subCategory','r_itemShape')"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select>
       </div>
       <div class="field"><label>仕入れ価格</label><input type="number" id="r_purchasePrice" placeholder="0"></div>
       <div class="field"><label>入庫時商品状態</label>
@@ -494,7 +494,7 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="grid">
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
-        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>指輪/リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>ハット</option><option>靴</option></select></div>
+        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
         <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
@@ -743,19 +743,23 @@ let trendCache=null; // トレンド検索結果を保持
 const BRAND_LIST=['ルイヴィトン','シャネル','エルメス','グッチ','プラダ','ディオール','フェンディ','セリーヌ','サンローラン','バレンシアガ','ボッテガヴェネタ','ロエベ','ジバンシィ','バーバリー','コーチ','マイケルコース','トリーバーチ','ケイトスペード','フルラ','ロンシャン','ミュウミュウ','クロエ','ヴァレンティノ','ジミーチュウ','フェラガモ','トッズ','ポールスミス','コムデギャルソン','メゾンマルジェラ','トムフォード','カルティエ','ティファニー','ブルガリ','ヴァンクリーフ&アーペル','ロレックス','オメガ','タグホイヤー','グランドセイコー','ガガミラノ','ダニエルウェリントン','レイバン','オークリー','トムブラウン','その他'];
 // 中カテゴリ → 形状候補
 const SHAPE_MAP={
-  '財布':['長財布','二つ折り財布','三つ折り財布','コインケース','カードケース','フラグメントケース','がま口財布','ラウンドファスナー長財布','キーケース'],
-  'バッグ':['トートバッグ','ショルダーバッグ','ハンドバッグ','クラッチバッグ','ボストンバッグ','リュック/バックパック','ボディバッグ','ウエストバッグ','ミニバッグ','ハンドル付きバッグ'],
-  'サングラス/メガネ':['サングラス','メガネ/眼鏡','ボストン型','ウェリントン型','ティアドロップ型','スクエア型','ラウンド型'],
-  'ベルト':['レザーベルト','リバーシブルベルト','ナローベルト','ワイドベルト','GGベルト'],
-  '腕時計':['アナログ腕時計','デジタル腕時計','クロノグラフ','自動巻き','クォーツ','スケルトン'],
-  'ネックレス':['チェーンネックレス','ペンダント','チョーカー','ロングネックレス'],
-  'ピアス/イヤリング':['スタッドピアス','フープピアス','ドロップピアス','イヤリング','イヤーカフ'],
-  'ブレスレット/バングル':['チェーンブレスレット','バングル','レザーブレスレット','チャームブレスレット'],
-  '指輪/リング':['リング','ピンキーリング','コンビリング','ペアリング'],
-  'チャーム/キーホルダー':['バッグチャーム','キーホルダー','キーリング'],
-  'ネクタイ':['ネクタイ','ナロータイ','蝶ネクタイ'],
-  'ハット':['キャップ','ハット','ニット帽','バケットハット'],
-  '靴':['スニーカー','レザーシューズ','ローファー','パンプス','ブーツ','サンダル','ドライビングシューズ']
+  '財布':['二つ折り財布','三つ折り財布','長財布','マネークリップ','コインケース','カードケース','フラグメントケース','チェーンウォレット','キーケース','シガレットケース'],
+  'バッグ':['トートバッグ','ショルダーバッグ','ハンドバッグ','クラッチバッグ','ボストンバッグ','リュック/バックパック','ボディバッグ','ウエストバッグ','ミニバッグ'],
+  'サングラス/メガネ':['サングラス','メガネ'],
+  'ベルト':['ベルト','サスペンダー'],
+  '腕時計':['腕時計'],
+  'ネックレス':['ネックレス','ペンダントトップ','チョーカー'],
+  'ピアス/イヤリング':['ピアス','イヤリング'],
+  'ブレスレット/バングル':['ブレスレット','バングル'],
+  'リング':['リング'],
+  'チャーム/キーホルダー':['チャーム','キーホルダー'],
+  'ネクタイ':['ネクタイ','蝶ネクタイ'],
+  '帽子':['キャップ','ハット','ニット帽','ベレー帽','ハンチング','サンバイザー'],
+  '靴':['スニーカー','パンプス','ローファー','ブーツ','サンダル','ミュール','フラットシューズ','ドレスシューズ'],
+  'アパレル':['アウター','トップス','ボトムス','ワンピース','セットアップ'],
+  'ファッション小物':['スカーフ','ストール','マフラー','手袋'],
+  'その他アクセサリー':['ブローチ','ピンバッチ','カフス','タイピン','ヘアアクセサリー'],
+  'その他小物':['香水','コスメ','文房具','食器','インテリア小物']
 };
 function populateBrandList(){
   const dl=document.getElementById('brandList');
@@ -1445,7 +1449,11 @@ async function openEdit(id){
   if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach((url,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=url;const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.onclick=()=>deletePhoto('listing',i,data.id);wrap.appendChild(img);wrap.appendChild(del);lg.appendChild(wrap);});}
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
-  set('e_mainCategory',data.main_category);set('e_subCategory',data.sub_category);
+  set('e_mainCategory',data.main_category);
+  // 旧カテゴリ名の互換変換
+  const subCatMap={'指輪/リング':'リング','ハット':'帽子'};
+  const normSub=subCatMap[data.sub_category]||data.sub_category;
+  set('e_subCategory',normSub);
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
