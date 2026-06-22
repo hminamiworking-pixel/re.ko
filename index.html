@@ -277,6 +277,11 @@ tr:hover td{background:var(--surface2);}
       <div class="field"><label>ブランド名</label><input type="text" id="r_brandName" list="brandList" placeholder="選択 or 入力"></div>
       <div class="field"><label>形状</label><select id="r_itemShape"><option value="">中カテゴリーを選択</option></select></div>
       <div class="field"><label>フリーワード</label><input type="text" id="r_freeWord" placeholder="例：モノグラム ブラウン"></div>
+      <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="r_priceHigh" oninput="calcRegisterPrices()"></div>
+      <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="r_priceLow" oninput="calcRegisterPrices()"></div>
+      <div class="field"><label>中央値（自動）</label><input type="number" id="r_priceMid" readonly><span class="calc-info">＝（上振れ＋下振れ）÷ 2</span></div>
+      <div class="field"><label>上振れ中央値（自動）</label><input type="number" id="r_priceHighMid" readonly><span class="calc-info">＝（上振れ＋中央値）÷ 2</span></div>
+      <div class="field"><label>下振れ中央値（自動）</label><input type="number" id="r_priceLowMid" readonly><span class="calc-info">＝（下振れ＋中央値）÷ 2</span></div>
     </div>
     <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
       <div class="section-label">仕入れ時写真（任意）</div>
@@ -598,12 +603,6 @@ tr:hover td{background:var(--surface2);}
 
       <div class="section-label" style="margin-top:16px;">出品情報</div>
       <div class="grid">
-        <div class="field"><label>棚番</label><input type="text" id="e_shelfNo" placeholder="例：A-12"></div>
-        <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" oninput="calcEditPrices()"></div>
-        <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" oninput="calcEditPrices()"></div>
-        <div class="field"><label>中央値（自動）</label><input type="number" id="e_priceMid" readonly><span class="calc-info">＝（上振れ＋下振れ）÷ 2</span></div>
-        <div class="field"><label>上振れ中央値（自動）</label><input type="number" id="e_priceHighMid" readonly><span class="calc-info">＝（上振れ＋中央値）÷ 2</span></div>
-        <div class="field"><label>下振れ中央値（自動）</label><input type="number" id="e_priceLowMid" readonly><span class="calc-info">＝（下振れ＋中央値）÷ 2</span></div>
         <div class="field"><label>出品日</label><input type="date" id="e_listingDate"></div>
         <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
@@ -612,17 +611,6 @@ tr:hover td{background:var(--surface2);}
         <div class="field full"><label>リペア内容（出品用）</label><textarea id="e_repairContent" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>リペア内容（詳細）</label><textarea id="e_repairDetail" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>サイズ詳細</label><textarea id="e_sizeDetail"></textarea></div>
-      </div>
-
-      <!-- ===== 利益プレビュー（出品準備時の見込み）===== -->
-      <div style="margin-top:16px;display:flex;justify-content:flex-end;">
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 18px;min-width:280px;">
-          <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">見込み利益（中央値ベース）</div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益（売上×手数料−送料）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>粗利益（利益−仕入れ）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);"><span>利益率</span><span id="e_estRate" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
-          <div style="font-size:9px;color:var(--text3);margin-top:8px;">※手数料10%・送料750円の概算。実績は③出品で確定</div>
-        </div>
       </div>
 
       <!-- ===== 出品テンプレート ===== -->
@@ -645,6 +633,7 @@ tr:hover td{background:var(--surface2);}
     <div class="stage-panel" id="step3panel">
       <div class="section-label">売却情報</div>
       <div class="grid">
+        <div class="field"><label>棚番</label><input type="text" id="e_shelfNo" placeholder="例：A-12"></div>
         <div class="field"><label>売却日</label><input type="date" id="e_soldDate"></div>
         <div class="field"><label>売却時プラットフォーム</label>
           <select id="e_soldPlatform" onchange="calcSoldProfit()">
@@ -703,6 +692,17 @@ tr:hover td{background:var(--surface2);}
           <input type="number" id="e_profitAfterShipping">
           <input type="text" id="e_profitRate">
           <input type="number" id="e_profitGross">
+        </div>
+      </div>
+
+      <!-- ===== 見込み利益（中央値ベース）===== -->
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 18px;min-width:280px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">見込み利益（中央値ベース）</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益（売上×手数料−送料）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>粗利益（利益−仕入れ）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);"><span>利益率</span><span id="e_estRate" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:8px;">※中央値・手数料10%・送料750円の概算。売上入力で実績計算は上記</div>
         </div>
       </div>
       <div class="btn-row">
@@ -1168,21 +1168,36 @@ function switchStep(n){
 }
 
 // ==================== 価格計算 ====================
-function calcEditPrices(){
-  const h=Number(document.getElementById('e_priceHigh').value)||0;
-  const l=Number(document.getElementById('e_priceLow').value)||0;
+// 新規登録: 上振れ/下振れから中央値3種を自動算出
+function calcRegisterPrices(){
+  const h=Number(document.getElementById('r_priceHigh').value)||0;
+  const l=Number(document.getElementById('r_priceLow').value)||0;
   if(h&&l){
     const mid=Math.round((h+l)/2);
-    document.getElementById('e_priceMid').value=mid;
-    document.getElementById('e_priceHighMid').value=Math.round((h+mid)/2);
-    document.getElementById('e_priceLowMid').value=Math.round((l+mid)/2);
+    document.getElementById('r_priceMid').value=mid;
+    document.getElementById('r_priceHighMid').value=Math.round((h+mid)/2);
+    document.getElementById('r_priceLowMid').value=Math.round((l+mid)/2);
+  }
+}
+
+// 互換用（編集側に価格欄がなくなったため安全化）。AI入力等から呼ばれても無害
+function calcEditPrices(){
+  const hEl=document.getElementById('e_priceHigh');
+  const lEl=document.getElementById('e_priceLow');
+  if(hEl&&lEl){
+    const h=Number(hEl.value)||0,l=Number(lEl.value)||0;
+    if(h&&l){
+      const mid=Math.round((h+l)/2);
+      const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+      set('e_priceMid',mid);set('e_priceHighMid',Math.round((h+mid)/2));set('e_priceLowMid',Math.round((l+mid)/2));
+    }
   }
   calcEstProfit();
 }
 
-// 出品準備時の見込み利益（中央値ベース・手数料10%・送料750円の概算）
+// 見込み利益（中央値ベース・手数料10%・送料750円の概算）。中央値は登録済みデータから取得
 function calcEstProfit(){
-  const mid=Number((document.getElementById('e_priceMid')||{}).value)||0;
+  const mid=Number(currentEditData?.price_mid)||0;
   const cost=currentEditData?.purchase_price||0;
   const ep=document.getElementById('e_estProfit'),eg=document.getElementById('e_estGross'),er=document.getElementById('e_estRate');
   if(!ep)return;
@@ -1334,7 +1349,10 @@ async function saveNewProduct(){
     const imgs=registerImages.map(url=>{const[h,b]=url.split(',');return{base64:b,type:h.match(/:(.*?);/)?.[1]||'image/jpeg'};});
     photoUrls=await uploadImagesToStorage(imgs,productNo,'purchase');
   }
-  const data={product_no:productNo,photo_urls:photoUrls,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,status:'仕分け前'};
+  const rPh=Number(document.getElementById('r_priceHigh').value)||null;
+  const rPl=Number(document.getElementById('r_priceLow').value)||null;
+  const rMid=rPh&&rPl?Math.round((rPh+rPl)/2):null;
+  const data={product_no:productNo,photo_urls:photoUrls,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:rPh&&rMid?Math.round((rPh+rMid)/2):null,price_low_mid:rPl&&rMid?Math.round((rPl+rMid)/2):null,status:'仕分け前'};
   const {error}=await sb.from('products').insert(data);
   if(error){status.className='status-msg err';status.textContent='エラー: '+error.message;}
   else{status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;setTimeout(()=>status.textContent='',4000);}
@@ -1346,7 +1364,7 @@ async function saveStage(step,nextStep){
   const statusEl=document.getElementById(`e_status${step}`);statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
   if(step===1){
-    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,free_word:document.getElementById('e_freeWord').value,shelf_no:document.getElementById('e_shelfNo').value};
+    updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,free_word:document.getElementById('e_freeWord').value};
     if(editPurchaseImages.length){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
@@ -1356,10 +1374,9 @@ async function saveStage(step,nextStep){
     if(nextStep)updates.status='撮影前';
   }
   if(step===2){
-    const ph=Number(document.getElementById('e_priceHigh').value)||null;const pl=Number(document.getElementById('e_priceLow').value)||null;const mid=ph&&pl?Math.round((ph+pl)/2):null;
     const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
     const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,shelf_no:document.getElementById('e_shelfNo').value,listing_date:document.getElementById('e_listingDate').value||null,price_high:ph,price_low:pl,price_mid:mid,price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
     if(editListingImages.length){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
@@ -1371,7 +1388,7 @@ async function saveStage(step,nextStep){
   if(step===3){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
     const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitWithShip/rev*100)+'%':null;
-    updates={sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate,status:'入金'};
+    updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate,status:'入金'};
   }
   const {error}=await sb.from('products').update(updates).eq('id',editingId);
   if(error){statusEl.className='status-msg err';statusEl.textContent='エラー: '+error.message;}
