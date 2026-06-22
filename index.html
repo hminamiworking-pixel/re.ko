@@ -207,6 +207,8 @@ tr:hover td{background:var(--surface2);}
   <button class="nav-btn" onclick="showPage('sales',this)">売上管理</button>
 </nav>
 
+<datalist id="brandList"></datalist>
+
 <!-- DASHBOARD -->
 <div id="dashboard" class="page active">
   <div class="stat-grid">
@@ -218,25 +220,24 @@ tr:hover td{background:var(--surface2);}
     <div class="stat"><p>総利益</p><h3 id="statProfit">-</h3></div>
   </div>
   <div class="card">
-    <div class="card-title">最近の商品</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
-      <input type="text" id="f_no" placeholder="No." oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Inter',sans-serif;width:70px;outline:none;"><input type="text" id="f_brand" placeholder="ブランド" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:130px;outline:none;">
-      <input type="text" id="f_shelf" placeholder="棚番" oninput="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:90px;outline:none;">
-      <select id="f_status" onchange="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
-        <option value="">ステータス：全て</option>
-        <option>仕分け前</option><option>探索</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
+    <div class="card-title">売上推移</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <label style="font-size:12px;color:var(--text2);">対象年：</label>
+      <select id="dashYearSelect" onchange="drawDashCharts()" style="padding:5px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;"></select>
+      <label style="font-size:12px;color:var(--text2);margin-left:8px;">日割り対象月：</label>
+      <select id="dashMonthSelect" onchange="drawDashDailyChart()" style="padding:5px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;">
+        <option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
       </select>
-      <input type="date" id="f_dateFrom" onchange="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;color-scheme:light;">
-      <span style="font-size:11px;color:var(--text3);">〜</span>
-      <input type="date" id="f_dateTo" onchange="applyDashFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;color-scheme:light;">
-      <button onclick="clearDashFilter()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface2);color:var(--text2);cursor:pointer;">クリア</button>
-      <span id="f_count" style="font-size:11px;color:var(--text3);margin-left:4px;"></span>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>写真</th><th>No.</th><th>棚番</th><th>ブランド</th><th>形状</th><th>ステータス</th><th>登録日</th><th>出品日</th></tr></thead>
-        <tbody id="recentTable"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">読み込み中...</td></tr></tbody>
-      </table>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">月割り売上（年間）</div>
+        <div style="position:relative;height:240px;"><canvas id="dashMonthlyChart"></canvas></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">日割り売上（選択月）</div>
+        <div style="position:relative;height:240px;"><canvas id="dashDailyChart"></canvas></div>
+      </div>
     </div>
   </div>
 </div>
@@ -250,7 +251,7 @@ tr:hover td{background:var(--surface2);}
         <select id="r_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select>
       </div>
       <div class="field"><label>中カテゴリー</label>
-        <select id="r_subCategory"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>指輪/リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>ハット</option><option>靴</option></select>
+        <select id="r_subCategory" onchange="updateShapeOptions('r_subCategory','r_itemShape')"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>指輪/リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>ハット</option><option>靴</option></select>
       </div>
       <div class="field"><label>仕入れ価格</label><input type="number" id="r_purchasePrice" placeholder="0"></div>
       <div class="field"><label>入庫時商品状態</label>
@@ -273,10 +274,9 @@ tr:hover td{background:var(--surface2);}
           <option>ラビドラ(隆吾)</option><option>ラビスノ(みゆき)</option><option>メルカリオークション</option><option>メルカリ個人アカウント</option>
         </select>
       </div>
-      <div class="field"><label>ブランド名</label><input type="text" id="r_brandName"></div>
-      <div class="field"><label>形状</label><input type="text" id="r_itemShape" placeholder="例：二つ折り財布"></div>
+      <div class="field"><label>ブランド名</label><input type="text" id="r_brandName" list="brandList" placeholder="選択 or 入力"></div>
+      <div class="field"><label>形状</label><select id="r_itemShape"><option value="">中カテゴリーを選択</option></select></div>
       <div class="field"><label>フリーワード</label><input type="text" id="r_freeWord" placeholder="例：モノグラム ブラウン"></div>
-      <div class="field"><label>棚番</label><input type="text" id="r_shelfNo" placeholder="例：A-12"></div>
     </div>
     <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
       <div class="section-label">仕入れ時写真（任意）</div>
@@ -298,10 +298,23 @@ tr:hover td{background:var(--surface2);}
 <div id="products" class="page">
   <div class="card">
     <div class="card-title">商品一覧</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
+      <input type="text" id="p_no" placeholder="No." oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Inter',sans-serif;width:70px;outline:none;">
+      <input type="text" id="p_brand" placeholder="ブランド" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:130px;outline:none;">
+      <input type="text" id="p_shape" placeholder="形状" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:110px;outline:none;">
+      <input type="text" id="p_shelf" placeholder="棚番" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:90px;outline:none;">
+      <select id="p_status" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
+        <option value="">ステータス：全て</option>
+        <option>仕分け前</option><option>探索</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
+      </select>
+      <button onclick="clearProductsFilter()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface2);color:var(--text2);cursor:pointer;">クリア</button>
+      <span id="p_count" style="font-size:11px;color:var(--text3);"></span>
+      <button onclick="exportProductsCSV()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--teal);cursor:pointer;font-weight:600;margin-left:auto;">⬇ CSVエクスポート</button>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>No.</th><th>棚番</th><th>ブランド</th><th>形状</th><th>カテゴリー</th><th>仕入れ価格</th><th>ステータス</th><th>操作</th></tr></thead>
-        <tbody id="productsTable"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">読み込み中...</td></tr></tbody>
+        <thead><tr><th>写真</th><th>No.</th><th>棚番</th><th>ブランド</th><th>形状</th><th>カテゴリー</th><th>仕入れ価格</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="productsTable"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">読み込み中...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -476,7 +489,7 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="grid">
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
-        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>指輪/リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>ハット</option><option>靴</option></select></div>
+        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>指輪/リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>ハット</option><option>靴</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
         <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
@@ -494,10 +507,9 @@ tr:hover td{background:var(--surface2);}
             <option>ラビドラ(隆吾)</option><option>ラビスノ(みゆき)</option><option>メルカリオークション</option><option>メルカリ個人アカウント</option>
           </select>
         </div>
-        <div class="field"><label>ブランド名</label><input type="text" id="e_brandName"></div>
-        <div class="field"><label>形状</label><input type="text" id="e_itemShape"></div>
+        <div class="field"><label>ブランド名</label><input type="text" id="e_brandName" list="brandList" placeholder="選択 or 入力"></div>
+        <div class="field"><label>形状</label><select id="e_itemShape"><option value="">中カテゴリーを選択</option></select></div>
         <div class="field"><label>フリーワード</label><input type="text" id="e_freeWord" placeholder="例：モノグラム ブラウン"></div>
-        <div class="field"><label>棚番</label><input type="text" id="e_shelfNo" placeholder="例：A-12"></div>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveStage(1)">保存</button>
@@ -573,7 +585,6 @@ tr:hover td{background:var(--surface2);}
         <p>出品用写真をアップロード（リペア後）</p>
       </div>
       <div class="grid" style="margin-top:12px;">
-        <div class="field full"><label>リペア内容（AI入力前に記入）</label><input type="text" id="e_repairInputAI" placeholder="例：クリーニング コバ補修 一部補色"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
@@ -587,20 +598,13 @@ tr:hover td{background:var(--surface2);}
 
       <div class="section-label" style="margin-top:16px;">出品情報</div>
       <div class="grid">
-        <div class="field"><label>販売チャンネル</label>
-          <select id="e_salesChannel">
-            <option value="">選択</option>
-            <option>メルカリshops</option><option>ラクマ</option><option>ラクマ公式ストア</option><option>ゼンプラス</option>
-            <option>メルカリ</option><option>メルカリオークション</option><option>BASE</option>
-          </select>
-        </div>
-        <div class="field"><label>出品日</label><input type="date" id="e_listingDate"></div>
-        <div class="field"><label>#倉庫場所/梱包</label><input type="text" id="e_warehousePlace"></div>
+        <div class="field"><label>棚番</label><input type="text" id="e_shelfNo" placeholder="例：A-12"></div>
         <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" oninput="calcEditPrices()"></div>
         <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" oninput="calcEditPrices()"></div>
         <div class="field"><label>中央値（自動）</label><input type="number" id="e_priceMid" readonly><span class="calc-info">＝（上振れ＋下振れ）÷ 2</span></div>
         <div class="field"><label>上振れ中央値（自動）</label><input type="number" id="e_priceHighMid" readonly><span class="calc-info">＝（上振れ＋中央値）÷ 2</span></div>
         <div class="field"><label>下振れ中央値（自動）</label><input type="number" id="e_priceLowMid" readonly><span class="calc-info">＝（下振れ＋中央値）÷ 2</span></div>
+        <div class="field"><label>出品日</label><input type="date" id="e_listingDate"></div>
         <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>キーワード（コピー用）</label><textarea id="e_keywordsCopy" placeholder="AIが自動生成"></textarea></div>
@@ -608,6 +612,17 @@ tr:hover td{background:var(--surface2);}
         <div class="field full"><label>リペア内容（出品用）</label><textarea id="e_repairContent" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>リペア内容（詳細）</label><textarea id="e_repairDetail" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>サイズ詳細</label><textarea id="e_sizeDetail"></textarea></div>
+      </div>
+
+      <!-- ===== 利益プレビュー（出品準備時の見込み）===== -->
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 18px;min-width:280px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">見込み利益（中央値ベース）</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益（売上×手数料−送料）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>粗利益（利益−仕入れ）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);"><span>利益率</span><span id="e_estRate" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:8px;">※手数料10%・送料750円の概算。実績は③出品で確定</div>
+        </div>
       </div>
 
       <!-- ===== 出品テンプレート ===== -->
@@ -724,6 +739,42 @@ let currentEditData=null;
 let allProductsCache=[];
 let trendCache=null; // トレンド検索結果を保持
 
+// ==================== ブランド・形状マスタ ====================
+const BRAND_LIST=['ルイヴィトン','シャネル','エルメス','グッチ','プラダ','ディオール','フェンディ','セリーヌ','サンローラン','バレンシアガ','ボッテガヴェネタ','ロエベ','ジバンシィ','バーバリー','コーチ','マイケルコース','トリーバーチ','ケイトスペード','フルラ','ロンシャン','ミュウミュウ','クロエ','ヴァレンティノ','ジミーチュウ','フェラガモ','トッズ','ポールスミス','コムデギャルソン','メゾンマルジェラ','トムフォード','カルティエ','ティファニー','ブルガリ','ヴァンクリーフ&アーペル','ロレックス','オメガ','タグホイヤー','グランドセイコー','ガガミラノ','ダニエルウェリントン','レイバン','オークリー','トムブラウン','その他'];
+// 中カテゴリ → 形状候補
+const SHAPE_MAP={
+  '財布':['長財布','二つ折り財布','三つ折り財布','コインケース','カードケース','フラグメントケース','がま口財布','ラウンドファスナー長財布','キーケース'],
+  'バッグ':['トートバッグ','ショルダーバッグ','ハンドバッグ','クラッチバッグ','ボストンバッグ','リュック/バックパック','ボディバッグ','ウエストバッグ','ミニバッグ','ハンドル付きバッグ'],
+  'サングラス/メガネ':['サングラス','メガネ/眼鏡','ボストン型','ウェリントン型','ティアドロップ型','スクエア型','ラウンド型'],
+  'ベルト':['レザーベルト','リバーシブルベルト','ナローベルト','ワイドベルト','GGベルト'],
+  '腕時計':['アナログ腕時計','デジタル腕時計','クロノグラフ','自動巻き','クォーツ','スケルトン'],
+  'ネックレス':['チェーンネックレス','ペンダント','チョーカー','ロングネックレス'],
+  'ピアス/イヤリング':['スタッドピアス','フープピアス','ドロップピアス','イヤリング','イヤーカフ'],
+  'ブレスレット/バングル':['チェーンブレスレット','バングル','レザーブレスレット','チャームブレスレット'],
+  '指輪/リング':['リング','ピンキーリング','コンビリング','ペアリング'],
+  'チャーム/キーホルダー':['バッグチャーム','キーホルダー','キーリング'],
+  'ネクタイ':['ネクタイ','ナロータイ','蝶ネクタイ'],
+  'ハット':['キャップ','ハット','ニット帽','バケットハット'],
+  '靴':['スニーカー','レザーシューズ','ローファー','パンプス','ブーツ','サンダル','ドライビングシューズ']
+};
+function populateBrandList(){
+  const dl=document.getElementById('brandList');
+  if(dl) dl.innerHTML=BRAND_LIST.map(b=>`<option value="${b}">`).join('');
+}
+function updateShapeOptions(subCatId,shapeId,keepValue){
+  const cat=(document.getElementById(subCatId)||{}).value||'';
+  const sel=document.getElementById(shapeId);
+  if(!sel)return;
+  const cur=keepValue!==undefined?keepValue:sel.value;
+  const list=SHAPE_MAP[cat]||[];
+  sel.innerHTML='<option value="">'+(list.length?'選択':'中カテゴリーを選択')+'</option>'+list.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // 既存値がリストになければ手書き候補として追加（編集時の互換）
+  if(cur){
+    if(!list.includes(cur)){const o=document.createElement('option');o.value=cur;o.textContent=cur+'（既存）';sel.appendChild(o);}
+    sel.value=cur;
+  }
+}
+
 const ALL_STATUSES=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリオークション','入金'];
 function statusOptions(current){
   return ALL_STATUSES.map(s=>`<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
@@ -839,10 +890,6 @@ async function fetchTrend(){
     document.getElementById('trendLoading').style.display='none';
     document.getElementById('trendResult').style.display='block';
 
-    if(trend.priceMax&&!document.getElementById('e_priceHigh').value) document.getElementById('e_priceHigh').value=trend.priceMax;
-    if(trend.priceMin&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=trend.priceMin;
-    if(trend.priceMax||trend.priceMin) calcEditPrices();
-
     status.className='status-msg ok';status.textContent='トレンド取得完了';
   }catch(err){
     document.getElementById('trendLoading').style.display='none';
@@ -859,7 +906,8 @@ async function generateAI(){
   const brand=document.getElementById('e_brandName').value.trim();
   const shape=document.getElementById('e_itemShape').value.trim();
   const freeWord=document.getElementById('e_freeWord')?document.getElementById('e_freeWord').value.trim():'';
-  const repairInput=document.getElementById('e_repairInputAI').value.trim();
+  const repairCheckIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
+  const repairInput=repairCheckIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value).join(' ');
   const conditionInput=document.getElementById('e_conditionInputAI').value.trim();
   const hasPhotos=editListingImages.length>0;
 
@@ -872,19 +920,11 @@ async function generateAI(){
   setProgress(10,'AI生成中...');
 
   try{
-    const trendSection=trendCache
-      ? '\n【トレンド情報（メルカリ・ラクマ調査済み）】\n'
-        +'注目キーワード：'+(trendCache.hotKeywords||[]).join(' ')+'\n'
-        +'相場帯：¥'+(trendCache.priceMin||0)+'〜¥'+(trendCache.priceMax||0)+'（中央値¥'+(trendCache.priceMid||0)+'）\n'
-        +'市場サマリー：'+(trendCache.summary||'')+'\n'
-        +'※ トレンドキーワードを優先的にSEOワード・タイトル・商品文章に反映。相場帯で価格を設定。'
-      : '';
-
+    // トレンド検索結果は商品文章・タイトル・キーワードには反映しない（パネル表示のみ）
     const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
     const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
       +'タイトル形式：【情景コピー14文字】\nブランド名 形状 素材 カラー\n'
-      +trendSection+'\n'
       +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
       +'JSONのみ返答：{"brandName":"","itemShape":"","priceHigh":0,"priceLow":0,"productTitle":"","keywords":"","keywordsCopy":"","productDescription":"","repairContent":"","repairDetail":""}"';
@@ -920,12 +960,10 @@ async function generateAI(){
     document.getElementById('e_productDescription').value=r.productDescription||'';
     document.getElementById('e_repairContent').value=r.repairContent||'';
     document.getElementById('e_repairDetail').value=r.repairDetail||'';
-    if(r.priceHigh&&!document.getElementById('e_priceHigh').value) document.getElementById('e_priceHigh').value=r.priceHigh;
-    if(r.priceLow&&!document.getElementById('e_priceLow').value) document.getElementById('e_priceLow').value=r.priceLow;
     calcEditPrices();
 
     setProgress(100,'');
-    status.className='status-msg ok';status.textContent='✅ 自動入力完了'+(trendCache?' (トレンド反映済み)':'');
+    status.className='status-msg ok';status.textContent='✅ 自動入力完了';
     setTimeout(()=>{
       document.getElementById('e_progressBar').style.display='none';
       document.getElementById('e_progressFill').style.width='0%';
@@ -1133,11 +1171,30 @@ function switchStep(n){
 function calcEditPrices(){
   const h=Number(document.getElementById('e_priceHigh').value)||0;
   const l=Number(document.getElementById('e_priceLow').value)||0;
-  if(!h||!l)return;
-  const mid=Math.round((h+l)/2);
-  document.getElementById('e_priceMid').value=mid;
-  document.getElementById('e_priceHighMid').value=Math.round((h+mid)/2);
-  document.getElementById('e_priceLowMid').value=Math.round((l+mid)/2);
+  if(h&&l){
+    const mid=Math.round((h+l)/2);
+    document.getElementById('e_priceMid').value=mid;
+    document.getElementById('e_priceHighMid').value=Math.round((h+mid)/2);
+    document.getElementById('e_priceLowMid').value=Math.round((l+mid)/2);
+  }
+  calcEstProfit();
+}
+
+// 出品準備時の見込み利益（中央値ベース・手数料10%・送料750円の概算）
+function calcEstProfit(){
+  const mid=Number((document.getElementById('e_priceMid')||{}).value)||0;
+  const cost=currentEditData?.purchase_price||0;
+  const ep=document.getElementById('e_estProfit'),eg=document.getElementById('e_estGross'),er=document.getElementById('e_estRate');
+  if(!ep)return;
+  if(!mid){ep.textContent='-';eg.textContent='-';er.textContent='-';return;}
+  const FEE=0.10,SHIP=750;
+  const profit=Math.floor(mid*(1-FEE)-SHIP);      // 利益＝売上×(1−手数料)−送料
+  const gross=Math.floor(profit-cost);            // 粗利益＝利益−仕入れ
+  const rate=Math.floor(profit/mid*100);          // 利益率
+  const fmt=v=>'¥'+v.toLocaleString();
+  ep.textContent=fmt(profit);
+  eg.textContent=fmt(gross);eg.style.color=gross<0?'var(--red)':'var(--text)';
+  er.textContent=rate+'%';er.style.color=rate<0?'var(--red)':'var(--text)';
 }
 
 // ==================== 写真処理 ====================
@@ -1151,8 +1208,9 @@ function handleRegisterPhotos(e){
 }
 
 function handleEditPhotos(e,type){
-  const images=[];
   const galleryId=type==='listing'?'e_listingPhotos':'e_purchasePhotos';
+  // 既存の追加分に追記（毎回リセットしない）
+  const target=type==='listing'?editListingImages:editPurchaseImages;
   Array.from(e.target.files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=ev=>{
@@ -1162,15 +1220,15 @@ function handleEditPhotos(e,type){
         if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
         canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);
         const compressed=canvas.toDataURL('image/jpeg',0.7);
-        images.push({base64:compressed.split(',')[1],type:'image/jpeg',dataUrl:compressed});
+        target.push({base64:compressed.split(',')[1],type:'image/jpeg',dataUrl:compressed});
         const imgEl=document.createElement('img');imgEl.src=compressed;document.getElementById(galleryId).appendChild(imgEl);
-        if(type==='listing'){editListingImages=images;}
-        else{editPurchaseImages=images;}
       };
       img.src=ev.target.result;
     };
     reader.readAsDataURL(file);
   });
+  // 同じファイルを連続選択できるようリセット
+  e.target.value='';
 }
 
 
@@ -1276,7 +1334,7 @@ async function saveNewProduct(){
     const imgs=registerImages.map(url=>{const[h,b]=url.split(',');return{base64:b,type:h.match(/:(.*?);/)?.[1]||'image/jpeg'};});
     photoUrls=await uploadImagesToStorage(imgs,productNo,'purchase');
   }
-  const data={product_no:productNo,photo_urls:photoUrls,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,shelf_no:document.getElementById('r_shelfNo').value,status:'仕分け前'};
+  const data={product_no:productNo,photo_urls:photoUrls,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,status:'仕分け前'};
   const {error}=await sb.from('products').insert(data);
   if(error){status.className='status-msg err';status.textContent='エラー: '+error.message;}
   else{status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;setTimeout(()=>status.textContent='',4000);}
@@ -1293,7 +1351,7 @@ async function saveStage(step,nextStep){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
       const urls=await uploadImagesToStorage(editPurchaseImages,productNo,'purchase');
-      if(urls.length) updates.photo_urls=urls;
+      if(urls.length){const existing=(currentEditData&&Array.isArray(currentEditData.photo_urls))?currentEditData.photo_urls:[];updates.photo_urls=existing.concat(urls);}
     }
     if(nextStep)updates.status='撮影前';
   }
@@ -1301,12 +1359,12 @@ async function saveStage(step,nextStep){
     const ph=Number(document.getElementById('e_priceHigh').value)||null;const pl=Number(document.getElementById('e_priceLow').value)||null;const mid=ph&&pl?Math.round((ph+pl)/2):null;
     const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
     const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,sales_channel:document.getElementById('e_salesChannel').value,listing_date:document.getElementById('e_listingDate').value||null,warehouse_place:document.getElementById('e_warehousePlace').value,price_high:ph,price_low:pl,price_mid:mid,price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,shelf_no:document.getElementById('e_shelfNo').value,listing_date:document.getElementById('e_listingDate').value||null,price_high:ph,price_low:pl,price_mid:mid,price_high_mid:ph&&mid?Math.round((ph+mid)/2):null,price_low_mid:pl&&mid?Math.round((pl+mid)/2):null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
     if(editListingImages.length){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
       const urls=await uploadImagesToStorage(editListingImages,productNo,'listing');
-      if(urls.length) updates.listing_photo_urls=urls;
+      if(urls.length){const existing=(currentEditData&&Array.isArray(currentEditData.listing_photo_urls))?currentEditData.listing_photo_urls:[];updates.listing_photo_urls=existing.concat(urls);}
     }
     if(nextStep)updates.status='出品中';
   }
@@ -1371,10 +1429,11 @@ async function openEdit(id){
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   set('e_mainCategory',data.main_category);set('e_subCategory',data.sub_category);
+  updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
-  set('e_brandName',data.brand_name);set('e_itemShape',data.item_shape);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
-  set('e_salesChannel',data.sales_channel);set('e_listingDate',data.listing_date);set('e_warehousePlace',data.warehouse_place);
+  set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
+  set('e_listingDate',data.listing_date);
   const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   const savedChecks=(data.repair_detail_checks||'').split(',');
   repairIds.forEach(repId=>{const el=document.getElementById(repId);if(el)el.checked=savedChecks.includes(el.value);});
@@ -1385,10 +1444,22 @@ async function openEdit(id){
   if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';}
   const stepMap={'仕分け前':1,'探索':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリオークション':3,'入金':3};
   switchStep(stepMap[data.status]||1);
+  calcEstProfit();
   document.getElementById('editModal').classList.add('open');
   setTimeout(()=>{setupTemplateListeners();updateListingTemplate();},100);
 }
-function closeEditModal(){document.getElementById('editModal').classList.remove('open');editingId=null;currentEditData=null;}
+function closeEditModal(){
+  document.getElementById('editModal').classList.remove('open');
+  // 入力値・写真の引き継ぎを防止して全クリア
+  document.querySelectorAll('#editModal input,#editModal select,#editModal textarea').forEach(el=>{
+    if(el.type==='file')el.value='';
+    else if(el.type==='checkbox')el.checked=false;
+    else el.value='';
+  });
+  ['e_purchasePhotos','e_listingPhotos'].forEach(id=>{const g=document.getElementById(id);if(g)g.innerHTML='';});
+  editListingImages=[];editPurchaseImages=[];
+  editingId=null;currentEditData=null;trendCache=null;
+}
 
 // ==================== 詳細モーダル ====================
 async function viewProduct(id){
@@ -1407,28 +1478,44 @@ async function deleteProduct(id,no){
   await sb.from('products').delete().eq('id',id);loadProducts();
 }
 
-// ==================== ダッシュボードフィルター ====================
-function applyDashFilter(){
-  const no=(document.getElementById('f_no').value||'').trim();
-  const brand=(document.getElementById('f_brand').value||'').trim().toLowerCase();
-  const shelf=(document.getElementById('f_shelf').value||'').trim().toLowerCase();
-  const status=document.getElementById('f_status').value;
-  const dateFrom=document.getElementById('f_dateFrom').value;const dateTo=document.getElementById('f_dateTo').value;
-  const filtered=allProductsCache.filter(d=>{
-    if(no&&!String(d.product_no||'').includes(no))return false;
-    if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
-    if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
-    if(status&&d.status!==status)return false;
-    const cd=d.created_at?d.created_at.slice(0,10):'';
-    if(dateFrom&&cd<dateFrom)return false;if(dateTo&&cd>dateTo)return false;return true;
-  });
-  document.getElementById('f_count').textContent=`${filtered.length}件`;
-  document.getElementById('recentTable').innerHTML=filtered.map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[d.listing_photo_urls.length-1]}">`:`<div class="thumb-empty">なし</div>`;
-    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
-  }).join('')||`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>`;
+// ==================== ダッシュボード売上グラフ ====================
+function buildDashYearOptions(data){
+  const years=new Set();
+  data.forEach(d=>{if(d.sold_date)years.add(d.sold_date.slice(0,4));});
+  if(!years.size)years.add(String(new Date().getFullYear()));
+  const sel=document.getElementById('dashYearSelect');const cur=sel.value;
+  sel.innerHTML='';
+  [...years].sort((a,b)=>b-a).forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'年';sel.appendChild(o);});
+  if(cur&&[...years].includes(cur))sel.value=cur;
+  // 日割り対象月は当月をデフォルト
+  if(!document.getElementById('dashMonthSelect').value)document.getElementById('dashMonthSelect').value=String(new Date().getMonth()+1).padStart(2,'0');
 }
-function clearDashFilter(){['f_no','f_brand','f_shelf','f_dateFrom','f_dateTo'].forEach(id=>document.getElementById(id).value='');document.getElementById('f_status').value='';applyDashFilter();}
+function drawDashMonthlyChart(){
+  const yr=document.getElementById('dashYearSelect').value;if(!yr)return;
+  const m={};for(let i=1;i<=12;i++)m[String(i).padStart(2,'0')]=0;
+  dashChartData.forEach(d=>{if(d.sold_date&&d.sold_date.startsWith(yr)){const mo=d.sold_date.slice(5,7);if(m[mo]!==undefined)m[mo]+=d.revenue||0;}});
+  const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  destroyChart('dashMonthlyChart');
+  chartInstances['dashMonthlyChart']=new Chart(document.getElementById('dashMonthlyChart').getContext('2d'),{
+    type:'bar',data:{labels,datasets:[{label:'売上',data:Object.values(m),backgroundColor:'rgba(45,125,79,0.85)',borderRadius:3}]},
+    options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
+  });
+}
+function drawDashDailyChart(){
+  const yr=document.getElementById('dashYearSelect').value;const mo=document.getElementById('dashMonthSelect').value;
+  if(!yr||!mo)return;
+  const days=new Date(parseInt(yr),parseInt(mo),0).getDate();
+  const m={};for(let i=1;i<=days;i++)m[i]=0;
+  const prefix=`${yr}-${mo}`;
+  dashChartData.forEach(d=>{if(d.sold_date&&d.sold_date.startsWith(prefix)){const day=parseInt(d.sold_date.slice(8,10));if(m[day]!==undefined)m[day]+=d.revenue||0;}});
+  const labels=Object.keys(m).map(k=>k+'日');
+  destroyChart('dashDailyChart');
+  chartInstances['dashDailyChart']=new Chart(document.getElementById('dashDailyChart').getContext('2d'),{
+    type:'bar',data:{labels,datasets:[{label:'売上',data:Object.values(m),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:2}]},
+    options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
+  });
+}
+function drawDashCharts(){drawDashMonthlyChart();drawDashDailyChart();}
 
 // ==================== シートフィルター ====================
 let salesRawData=[];
@@ -2078,9 +2165,11 @@ function setupTemplateListeners(){
 }
 
 // ==================== ダッシュボード ====================
+let dashChartData=[];
 async function loadDashboard(){
-  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,listing_photo_urls,profit_gross').order('product_no',{ascending:false});if(!data)return;
+  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,sold_date,revenue,profit_gross').order('product_no',{ascending:false});if(!data)return;
   allProductsCache=data;
+  dashChartData=data;
   document.getElementById('statTotal').textContent=data.length;
   const preList=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前'];
   const activeList=['出品中','発送前','受け取り評価前'];
@@ -2090,16 +2179,72 @@ async function loadDashboard(){
   document.getElementById('statSold').textContent=data.filter(d=>['エコオク','メルカリオークション','入金'].includes(d.status)).length;
   const totalProfit=data.reduce((s,d)=>s+(d.profit_gross||0),0);
   document.getElementById('statProfit').textContent='¥'+totalProfit.toLocaleString();
-  document.getElementById('recentTable').innerHTML=data.slice(0,10).map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[d.listing_photo_urls.length-1]}">`:`<div class="thumb-empty">なし</div>`;
-    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td>${d.created_at?d.created_at.slice(0,10):'-'}</td><td>${d.listing_date||'-'}</td></tr>`;
-  }).join('');
+  buildDashYearOptions(data);
+  drawDashCharts();
 }
 
 // ==================== 商品一覧 ====================
+let productsListCache=[];
+function renderProductsTable(data){
+  document.getElementById('p_count').textContent=data.length+'件';
+  document.getElementById('productsTable').innerHTML=data.length?data.map(d=>{
+    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[d.listing_photo_urls.length-1]}">`:(d.photo_urls&&d.photo_urls.length?`<img class="thumb" src="${d.photo_urls[d.photo_urls.length-1]}">`:`<div class="thumb-empty">なし</div>`);
+    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
+  }).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
+}
+function applyProductsFilter(){
+  const no=(document.getElementById('p_no').value||'').trim();
+  const brand=(document.getElementById('p_brand').value||'').trim().toLowerCase();
+  const shape=(document.getElementById('p_shape').value||'').trim().toLowerCase();
+  const shelf=(document.getElementById('p_shelf').value||'').trim().toLowerCase();
+  const status=document.getElementById('p_status').value;
+  const filtered=productsListCache.filter(d=>{
+    if(no&&!String(d.product_no||'').includes(no))return false;
+    if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
+    if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
+    if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
+    if(status&&d.status!==status)return false;
+    return true;
+  });
+  renderProductsTable(filtered);
+}
+function clearProductsFilter(){
+  ['p_no','p_brand','p_shape','p_shelf'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p_status').value='';
+  renderProductsTable(productsListCache);
+}
 async function loadProducts(){
-  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status').order('product_no',{ascending:false});if(!data)return;
-  document.getElementById('productsTable').innerHTML=data.map(d=>`<tr><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class=\"status-inline\" data-id=\"${d.id}\" onchange=\"updateStatusInline(this)\" style=\"padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;\">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`).join('');
+  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,photo_urls,listing_photo_urls').order('product_no',{ascending:false});if(!data)return;
+  productsListCache=data;
+  renderProductsTable(data);
+}
+
+// ==================== CSVエクスポート ====================
+function exportProductsCSV(){
+  const cols=[['No.','product_no'],['棚番','shelf_no'],['ブランド','brand_name'],['形状','item_shape'],['大カテゴリ','main_category'],['中カテゴリ','sub_category'],['フリーワード','free_word'],['仕入れ価格','purchase_price'],['仕入れ先','purchase_source'],['出品アカウント','listing_account'],['ステータス','status'],['上振れ','price_high'],['下振れ','price_low'],['中央値','price_mid'],['出品日','listing_date'],['売却日','sold_date'],['売却PF','sold_platform'],['売れ先','sold_to'],['売上','revenue'],['送料','shipping_cost'],['利益','profit_after_shipping'],['粗利益','profit_gross'],['利益率','profit_rate'],['登録日','created_at']];
+  // フィルタ適用後の表示対象をエクスポート（現在の絞り込みを反映）
+  const no=(document.getElementById('p_no').value||'').trim();
+  const brand=(document.getElementById('p_brand').value||'').trim().toLowerCase();
+  const shape=(document.getElementById('p_shape').value||'').trim().toLowerCase();
+  const shelf=(document.getElementById('p_shelf').value||'').trim().toLowerCase();
+  const status=document.getElementById('p_status').value;
+  const rows=productsListCache.filter(d=>{
+    if(no&&!String(d.product_no||'').includes(no))return false;
+    if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
+    if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
+    if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
+    if(status&&d.status!==status)return false;
+    return true;
+  });
+  const esc=v=>{if(v===null||v===undefined)return '';const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const header=cols.map(c=>c[0]).join(',');
+  const body=rows.map(d=>cols.map(c=>{let v=d[c[1]];if(c[1]==='created_at'&&v)v=v.slice(0,10);return esc(v);}).join(',')).join('\n');
+  const bom='\uFEFF';
+  const blob=new Blob([bom+header+'\n'+body],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  const now=new Date();a.download=`rei_products_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+  a.click();URL.revokeObjectURL(url);
 }
 
 // ==================== 売上管理 ====================
@@ -2142,6 +2287,7 @@ async function loadSales(){
   salesListCache=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date));renderSalesTable(salesListCache);
 }
 
+populateBrandList();
 loadDashboard();
 </script>
 </body>
