@@ -1396,7 +1396,34 @@ async function saveStage(step,nextStep){
   }
   const {error}=await sb.from('products').update(updates).eq('id',editingId);
   if(error){statusEl.className='status-msg err';statusEl.textContent='エラー: '+error.message;}
-  else{statusEl.className='status-msg ok';statusEl.textContent='保存しました';if(nextStep)setTimeout(()=>switchStep(nextStep),600);}
+  else{
+    statusEl.className='status-msg ok';statusEl.textContent='保存しました';
+    // 保存済みの内容をcurrentEditDataへ反映し、次回追加時の追記ベースを最新化
+    if(currentEditData){Object.assign(currentEditData,updates);}
+    // アップロード済みの新規画像はもうDB側に取り込まれたので、未送信バッファをクリア
+    if(step===1){editPurchaseImages=[];if(updates.photo_urls){redrawEditGallery('purchase',updates.photo_urls);}}
+    if(step===2){
+      editListingImages=[];
+      // ギャラリーをDB保存後の確定URLで再描画（消失・重複防止）
+      if(updates.listing_photo_urls){redrawEditGallery('listing',updates.listing_photo_urls);}
+    }
+    if(nextStep)setTimeout(()=>switchStep(nextStep),600);
+  }
+}
+
+// 編集モーダルのギャラリーを確定URL配列で再描画
+function redrawEditGallery(type,urls){
+  const galleryId=type==='listing'?'e_listingPhotos':'e_purchasePhotos';
+  const gallery=document.getElementById(galleryId);
+  if(!gallery)return;
+  gallery.innerHTML='';
+  (urls||[]).forEach((u,i)=>{
+    const wrap=document.createElement('div');wrap.className='photo-wrap';
+    const img=document.createElement('img');img.src=u;
+    const del=document.createElement('button');del.className='photo-del';del.textContent='×';
+    del.onclick=()=>deletePhoto(type,i,editingId);
+    wrap.appendChild(img);wrap.appendChild(del);gallery.appendChild(wrap);
+  });
 }
 
 // ==================== 送料計算 ====================
@@ -1491,7 +1518,8 @@ async function viewProduct(id){
   const {data}=await sb.from('products').select('*').eq('id',id).single();if(!data)return;
   document.getElementById('viewNo').textContent=`#${String(data.product_no||'?').padStart(4,'0')}`;
   const gallery=document.getElementById('viewPhotoGallery');gallery.innerHTML='';
-  if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach(url=>{const img=document.createElement('img');img.src=url;gallery.appendChild(img);});}
+  const viewPhotos=(data.listing_photo_urls&&data.listing_photo_urls.length)?data.listing_photo_urls:(data.photo_urls||[]);
+  if(Array.isArray(viewPhotos)){viewPhotos.forEach(url=>{const img=document.createElement('img');img.src=url;gallery.appendChild(img);});}
   const fields=[['ブランド名',data.brand_name],['形状',data.item_shape],['ステータス',data.status],['カテゴリー',(data.main_category||'')+' / '+(data.sub_category||'')],['仕入れ価格',data.purchase_price?'¥'+data.purchase_price.toLocaleString():'-'],['仕入れ先',data.purchase_source],['出品アカウント',data.listing_account],['販売予定（上振れ）',data.price_high?'¥'+data.price_high.toLocaleString():'-'],['中央値',data.price_mid?'¥'+data.price_mid.toLocaleString():'-'],['商品タイトル',data.product_title],['商品文章',data.product_description],['売上',data.revenue?'¥'+data.revenue.toLocaleString():'-'],['利益',data.profit_gross?'¥'+data.profit_gross.toLocaleString():'-'],['利益率',data.profit_rate||'-']];
   document.getElementById('viewContent').innerHTML='<div class="grid">'+fields.map(([l,v])=>`<div class="field"><label>${l}</label><div class="readonly-field">${v||'-'}</div></div>`).join('')+'</div>';
   document.getElementById('viewModal').classList.add('open');
@@ -2213,7 +2241,7 @@ let productsListCache=[];
 function renderProductsTable(data){
   document.getElementById('p_count').textContent=data.length+'件';
   document.getElementById('productsTable').innerHTML=data.length?data.map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[d.listing_photo_urls.length-1]}">`:(d.photo_urls&&d.photo_urls.length?`<img class="thumb" src="${d.photo_urls[d.photo_urls.length-1]}">`:`<div class="thumb-empty">なし</div>`);
+    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[0]}">`:`<div class="thumb-empty">なし</div>`;
     return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
   }).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
 }
@@ -2239,7 +2267,7 @@ function clearProductsFilter(){
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,photo_urls,listing_photo_urls').order('product_no',{ascending:false});if(!data)return;
+  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls').order('product_no',{ascending:false});if(!data)return;
   productsListCache=data;
   renderProductsTable(data);
 }
