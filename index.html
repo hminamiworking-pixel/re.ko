@@ -86,9 +86,9 @@ tr:hover td{background:var(--surface2);}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);width:94%;max-width:860px;max-height:90vh;overflow-y:auto;padding:24px;}
-.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;position:sticky;top:-24px;background:var(--surface);padding:12px 0;margin-top:-12px;z-index:10;border-bottom:1px solid var(--border);}
+.modal-close{background:var(--surface2);border:1px solid var(--border2);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
 .modal-head h3{font-size:14px;font-weight:600;letter-spacing:.04em;}
-.modal-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px;line-height:1;}
 .photo-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
 .photo-gallery img{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--border);}
 .readonly-field{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:12px;color:var(--text2);min-height:32px;word-break:break-all;}
@@ -310,7 +310,7 @@ tr:hover td{background:var(--surface2);}
       <input type="text" id="p_shelf" placeholder="棚番" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:90px;outline:none;">
       <select id="p_status" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
         <option value="">ステータス：全て</option>
-        <option>仕分け前</option><option>探索</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
+        <option>仕分け前</option><option>検品</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
       </select>
       <button onclick="clearProductsFilter()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface2);color:var(--text2);cursor:pointer;">クリア</button>
       <span id="p_count" style="font-size:11px;color:var(--text3);"></span>
@@ -494,7 +494,7 @@ tr:hover td{background:var(--surface2);}
       </div>
       <div class="grid">
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
-        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
+        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateMaterialOptions();updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
         <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
@@ -604,6 +604,31 @@ tr:hover td{background:var(--surface2);}
       <div class="section-label" style="margin-top:16px;">出品情報</div>
       <div class="grid">
         <div class="field"><label>出品日</label><input type="date" id="e_listingDate"></div>
+        <div class="field"><label>状態ランク（condition）</label>
+          <select id="e_conditionRank" onchange="updateListingTemplate()">
+            <option value="">選択</option>
+            <option value="SA">SA：使用感が非常に少なく綺麗</option>
+            <option value="A">A：使用感はあるが綺麗</option>
+            <option value="AB">AB：使用感はあるが比較的良好</option>
+            <option value="B">B：ダメージ・使用感あり</option>
+          </select>
+        </div>
+        <div class="field"><label>素材（material）</label>
+          <select id="e_material" onchange="updateListingTemplate()"><option value="">中カテゴリーを選択</option></select>
+        </div>
+        <div class="field"><label>カラー（color）</label>
+          <select id="e_color" onchange="updateListingTemplate()">
+            <option value="">選択</option>
+            <option>ブラック</option><option>グレー</option><option>ホワイト</option><option>ブルー</option><option>ネイビー</option><option>グリーン</option><option>カーキ</option><option>ブラウン</option><option>レッド</option><option>オレンジ</option><option>イエロー</option><option>シルバー</option><option>ゴールド</option><option>パープル</option><option>ベージュ</option><option>マルチカラー</option><option>キャメル</option><option>スケルトン、クリア</option><option>ピンク</option>
+          </select>
+        </div>
+        <div class="field"><label>付属品（accessories）</label>
+          <select id="e_accessories" onchange="updateListingTemplate()">
+            <option value="">選択</option>
+            <option>タグ</option><option>ギャランティカード</option><option>保存袋</option><option>説明書</option><option>箱</option><option>ショルダーストラップ</option><option>ショルダーストラップ（社外品）</option><option>チャーム</option><option>ポーチ</option><option>リボン</option><option>本体のみ</option>
+          </select>
+        </div>
+        <div class="field full"><label>サイズ（size・財布用フリー入力）</label><input type="text" id="e_sizeInput" placeholder="例：縦9cm 横11cm マチ2cm" oninput="updateListingTemplate()"></div>
         <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>キーワード（コピー用）</label><textarea id="e_keywordsCopy" placeholder="AIが自動生成"></textarea></div>
@@ -765,6 +790,24 @@ function populateBrandList(){
   const dl=document.getElementById('brandList');
   if(dl) dl.innerHTML=BRAND_LIST.map(b=>`<option value="${b}">`).join('');
 }
+// 素材リスト（財布・バッグ・ベルトは共通のレザー系、サングラス/腕時計は専用）
+const MATERIAL_LEATHER=['牛革（カウレザー）','牛革（カーフスキン）','牛革（キップスキン）','牛革（ステアスキン）','牛革（ブルスキン）','羊革（ラムレザー）','馬革（ホースハイド）','豚革（ピッグスキン）','山羊革（ゴートスキン）','サフィアーノレザー','レザー','本革','ワニ（クロコダイルレザー）','ウール（毛、羊毛含む）','トカゲ（リザードレザー）','蛇（パイソンレザー）','ダチョウ（オーストリッチレザー）','鹿革（ディアスキンレザー)','ミンク','エキゾチックレザー','エナメル革（パテントレザー）','牛床革','合皮','PVC','ナイロン','ポリエステル','キャンバス','その他','不明'];
+const MATERIAL_MAP={
+  '財布':MATERIAL_LEATHER,
+  'バッグ':MATERIAL_LEATHER,
+  'ベルト':MATERIAL_LEATHER,
+  'サングラス/メガネ':['チタン','メタル','プラスチック','ウッド','べっ甲','その他','不明'],
+  '腕時計':['ステンレス','チタン','樹脂（レジン）','セラミック','カーボン','アルミニウム','ゴールド10金','ゴールド18金','ラバー（シリコン）','シルバー925','PVDコーティング','サファイアガラス','ミネラルガラス','キャンバス','その他','不明']
+};
+function updateMaterialOptions(keepValue){
+  const cat=(document.getElementById('e_subCategory')||{}).value||'';
+  const sel=document.getElementById('e_material');
+  if(!sel)return;
+  const cur=keepValue!==undefined?keepValue:sel.value;
+  const list=MATERIAL_MAP[cat]||[];
+  sel.innerHTML='<option value="">'+(list.length?'選択':'対象カテゴリーで選択可')+'</option>'+list.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(cur){if(!list.includes(cur)){const o=document.createElement('option');o.value=cur;o.textContent=cur;sel.appendChild(o);}sel.value=cur;}
+}
 function updateShapeOptions(subCatId,shapeId,keepValue){
   const cat=(document.getElementById(subCatId)||{}).value||'';
   const sel=document.getElementById(shapeId);
@@ -779,7 +822,7 @@ function updateShapeOptions(subCatId,shapeId,keepValue){
   }
 }
 
-const ALL_STATUSES=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリオークション','入金'];
+const ALL_STATUSES=['仕分け前','検品','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリオークション','入金'];
 function statusOptions(current){
   return ALL_STATUSES.map(s=>`<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
 }
@@ -789,21 +832,23 @@ async function updateStatusInline(sel){
   sel.disabled=true;
   const {error}=await sb.from('products').update({status:newStatus}).eq('id',id);
   if(error){alert('更新失敗: '+error.message);sel.disabled=false;return;}
-  // キャッシュ更新
-  const item=allProductsCache.find(d=>d.id===id);
-  if(item)item.status=newStatus;
-  // stat再計算
-  const preList=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前'];
+  // 全キャッシュを同期更新（一覧・ダッシュボード・売上で値がズレないように）
+  [allProductsCache,productsListCache,dashChartData,chartAllData,salesRawData].forEach(cache=>{
+    if(Array.isArray(cache)){const it=cache.find(d=>d.id===id);if(it)it.status=newStatus;}
+  });
+  // stat再計算（ダッシュボードの数値が見えている場合）
+  const preList=['仕分け前','検品','リペア前','外注リペア','撮影前','画像加工前','出品前'];
   const activeList=['出品中','発送前','受け取り評価前'];
-  document.getElementById('statPurchased').textContent=allProductsCache.filter(d=>preList.includes(d.status)).length;
-  document.getElementById('statRepair').textContent=allProductsCache.filter(d=>activeList.includes(d.status)).length;
-  document.getElementById('statListing').textContent=allProductsCache.filter(d=>d.status==='保管中').length;
-  document.getElementById('statSold').textContent=allProductsCache.filter(d=>['エコオク','メルカリオークション','入金'].includes(d.status)).length;
-  document.getElementById('statTotal').textContent=allProductsCache.length;
+  const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setTxt('statPurchased',allProductsCache.filter(d=>preList.includes(d.status)).length);
+  setTxt('statRepair',allProductsCache.filter(d=>activeList.includes(d.status)).length);
+  setTxt('statListing',allProductsCache.filter(d=>d.status==='保管中').length);
+  setTxt('statSold',allProductsCache.filter(d=>['エコオク','メルカリオークション','入金'].includes(d.status)).length);
+  setTxt('statTotal',allProductsCache.length);
   sel.disabled=false;
 }
 function statusBadge(s){
-  const map={'仕分け前':'badge-gray','探索':'badge-gray','リペア前':'badge-yellow','外注リペア':'badge-yellow','撮影前':'badge-yellow','画像加工前':'badge-yellow','出品前':'badge-yellow','出品中':'badge-blue','発送前':'badge-blue','受け取り評価前':'badge-blue','保管中':'badge-gray','エコオク':'badge-green','メルカリオークション':'badge-green','入金':'badge-green'};
+  const map={'仕分け前':'badge-gray','検品':'badge-gray','リペア前':'badge-yellow','外注リペア':'badge-yellow','撮影前':'badge-yellow','画像加工前':'badge-yellow','出品前':'badge-yellow','出品中':'badge-blue','発送前':'badge-blue','受け取り評価前':'badge-blue','保管中':'badge-gray','エコオク':'badge-green','メルカリオークション':'badge-green','入金':'badge-green'};
   return `<span class="badge ${map[s]||'badge-gray'}">${s||'-'}</span>`;
 }
 function yen(v){return v?'¥'+Number(v).toLocaleString():'-';}
@@ -912,7 +957,7 @@ async function generateAI(){
   const freeWord=document.getElementById('e_freeWord')?document.getElementById('e_freeWord').value.trim():'';
   const repairCheckIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   const repairInput=repairCheckIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value).join(' ');
-  const conditionInput=document.getElementById('e_conditionInputAI').value.trim();
+  const conditionInput=[document.getElementById('e_conditionRank')?.value,document.getElementById('e_conditionInputAI').value.trim()].filter(Boolean).join(' ');
   const hasPhotos=editListingImages.length>0;
 
   if(!brand&&!shape&&!hasPhotos){alert('ブランド名・形状・写真のいずれかを入力してください');return;}
@@ -1380,7 +1425,7 @@ async function saveStage(step,nextStep){
   if(step===2){
     const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
     const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:document.getElementById('e_accessories').value,size_input:document.getElementById('e_sizeInput').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
     if(editListingImages.length){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
@@ -1392,20 +1437,43 @@ async function saveStage(step,nextStep){
   if(step===3){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
     const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitWithShip/rev*100)+'%':null;
-    updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate,status:'入金'};
+    updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate};
+    // 売上が入力されている場合のみ「入金」へ。棚番だけ直したい等のケースでステータスを誤更新しない
+    if(rev)updates.status='入金';
   }
-  const {error}=await sb.from('products').update(updates).eq('id',editingId);
+  // ===== 差分保存 =====
+  // currentEditDataと比較し、実際に変わった項目だけをDBへ送る。
+  // 写真URL・status・利益系の自動計算値は「常に意図して更新する項目」なので差分判定から除外（常に送る）。
+  const alwaysKeys=['photo_urls','listing_photo_urls','status','profit_after_shipping','profit_gross','profit_rate'];
+  let payload=updates;
+  if(currentEditData){
+    payload={};
+    Object.keys(updates).forEach(k=>{
+      if(alwaysKeys.includes(k)){payload[k]=updates[k];return;}
+      const before=currentEditData[k];
+      const after=updates[k];
+      // null/空文字/undefined を同一視（型ゆれによる誤検知を防ぐ）
+      const norm=v=>(v===undefined||v===null||v==='')?'':v;
+      if(norm(before)!==norm(after))payload[k]=after;
+    });
+  }
+  // 変更が一切なければDBアクセスせず終了
+  if(Object.keys(payload).length===0){
+    statusEl.className='status-msg ok';statusEl.textContent='変更なし';
+    if(nextStep)setTimeout(()=>switchStep(nextStep),600);
+    return;
+  }
+  const {error}=await sb.from('products').update(payload).eq('id',editingId);
   if(error){statusEl.className='status-msg err';statusEl.textContent='エラー: '+error.message;}
   else{
     statusEl.className='status-msg ok';statusEl.textContent='保存しました';
-    // 保存済みの内容をcurrentEditDataへ反映し、次回追加時の追記ベースを最新化
-    if(currentEditData){Object.assign(currentEditData,updates);}
+    // 保存済みの内容をcurrentEditDataへ反映し、次回の差分比較・追記ベースを最新化
+    if(currentEditData){Object.assign(currentEditData,payload);}
     // アップロード済みの新規画像はもうDB側に取り込まれたので、未送信バッファをクリア
-    if(step===1){editPurchaseImages=[];if(updates.photo_urls){redrawEditGallery('purchase',updates.photo_urls);}}
+    if(step===1){editPurchaseImages=[];if(payload.photo_urls){redrawEditGallery('purchase',payload.photo_urls);}}
     if(step===2){
       editListingImages=[];
-      // ギャラリーをDB保存後の確定URLで再描画（消失・重複防止）
-      if(updates.listing_photo_urls){redrawEditGallery('listing',updates.listing_photo_urls);}
+      if(payload.listing_photo_urls){redrawEditGallery('listing',payload.listing_photo_urls);}
     }
     if(nextStep)setTimeout(()=>switchStep(nextStep),600);
   }
@@ -1482,6 +1550,8 @@ async function openEdit(id){
   const normSub=subCatMap[data.sub_category]||data.sub_category;
   set('e_subCategory',normSub);
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
+  updateMaterialOptions(data.material||'');
+  set('e_conditionRank',data.condition_rank);set('e_color',data.color);set('e_accessories',data.accessories);set('e_sizeInput',data.size_input);
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
@@ -1494,7 +1564,7 @@ async function openEdit(id){
   set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);set('e_shippingCost',data.shipping_cost);
   set('e_profitAfterShipping',data.profit_after_shipping);set('e_profitGross',data.profit_gross);set('e_profitRate',data.profit_rate);
   if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';}
-  const stepMap={'仕分け前':1,'探索':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリオークション':3,'入金':3};
+  const stepMap={'仕分け前':1,'検品':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリオークション':3,'入金':3};
   switchStep(stepMap[data.status]||1);
   calcEstProfit();
   document.getElementById('editModal').classList.add('open');
@@ -1648,100 +1718,22 @@ const LISTING_TEMPLATES = {
 ・${d.description||''}
 ━━━━━━━━━━━━━━━━━━━
 【 size 】
-・縦：約cm
-・横：約cm
-・マチ：約cm
-━━━━━━━━━━━━━━━━━━━
-【 details 】
-開閉仕様：
-・ラウンドファスナー
-・L字ファスナー
-・フラップ（かぶせ）
-・スナップボタン
-・Wホック
-・がま口
-・ベルト開閉
-・プッシュロック式
-・オープン開閉
-・ダブルファスナー
-・札入れ×
-・小銭入れ×
-・カードポケット×
+${d.size||'・縦：約cm 横：約cm マチ：約cm'}
 ━━━━━━━━━━━━━━━━━━━
 【 color 】
-・ブラック
-・グレー
-・ホワイト
-・ブルー
-・ネイビー
-・グリーン
-・カーキ
-・ブラウン
-・レッド
-・オレンジ
-・イエロー
-・シルバー
-・ゴールド
-・パープル
-・ベージュ
-・マルチカラー
-・キャメル
-・スケルトン、クリア
-・ピンク
+${d.color?('・'+d.color):''}
 ━━━━━━━━━━━━━━━━━━━
 【 material 】
-・牛革（カウレザー）
-・牛革（カーフスキン）
-・牛革（キップスキン）
-・牛革（ステアスキン）
-・牛革（ブルスキン）
-・羊革（ラムレザー）
-・馬革（ホースハイド）
-・豚革（ピッグスキン）
-・山羊革（ゴートスキン）
-・サフィアーノレザー
-・レザー
-・本革
-・ワニ（クロコダイルレザー）
-・ウール（毛、羊毛含む）
-・トカゲ（リザードレザー）
-・蛇（パイソンレザー）
-・ダチョウ（オーストリッチレザー）
-・鹿革（ディアスキンレザー)
-・ミンク
-・エキゾチックレザー
-・エナメル革（パテントレザー）
-・牛床革
-・合皮
-・PVC
-・ナイロン
-・ポリエステル
-・キャンバス
-・その他
-・不明
+${d.material?('・'+d.material):''}
 ━━━━━━━━━━━━━━━━━━━
 【 accessories 】
-・タグ
-・ギャランティカード
-・保存袋
-・説明書
-・箱
-・ショルダーストラップ
-・ショルダーストラップ（社外品）
-・チャーム
-・ポーチ
-・リボン
-・本体のみ
+${d.accessories?('・'+d.accessories):''}
 ━━━━━━━━━━━━━━━━━━━
 【 condition 】
-SA：【使用感が非常に少なく綺麗】
-A：【使用感はあるが綺麗】
-AB：【使用感はあるが比較的良好】
-B：【ダメージ・使用感あり】
-※状態ランク詳細はショップ情報をご確認ください。
+${d.condition||''}
 ━━━━━━━━━━━━━━━━━━━
 【 maintenance 】
-・${d.maintenance||''}
+${d.maintenance||''}
 ━━━━━━━━━━━━━━━━━━━
 【 details 】
 ・${d.repairDetail||''}
@@ -1749,16 +1741,13 @@ B：【ダメージ・使用感あり】
 ・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
 "もう一度、美しく使える"品質を大切に、
 ブランド本来の魅力を活かしながら整えております。
-仕上がりは実物画像をご確認ください。 
-━━━━━━━━━━━━━━━━━━━
-【 serial / model no. 】
-・　/
+仕上がりは実物画像をご確認ください。
 ━━━━━━━━━━━━━━━━━━━
 【 source 】
 ・業者オークション / 国内リユースショップ
 ━━━━━━━━━━━━━━━━━━━
 【 notice 】
-※中古品の特性をご理解のうえご購入ください。 
+※中古品の特性をご理解のうえご購入ください。
 気になる点がございましたら、お気軽にコメントください！
 ━━━━━━━━━━━━━━━━━━━
 【 item no. 】
@@ -1771,93 +1760,20 @@ B：【ダメージ・使用感あり】
 ・高さ：約cm
 ・横：約cm
 ・マチ：約cm
-・手提げ立ち上がり：約cm
+・持ち手立ち上がり：約cm
 ・ショルダー立ち上がり：約cm
 ━━━━━━━━━━━━━━━━━━━
-【 details 】
-型：
-・ファスナー
-・フラップ
-[外装ポケット]
-・外ポケット×
-・背面ポケット×
-・サイドポケット×
-・その他ポケット×
-[内装ポケット]
-・内ポケット×
-・内側仕切りポケット×
-━━━━━━━━━━━━━━━━━━━
 【 color 】
-・ブラック
-・グレー
-・ホワイト
-・ブルー
-・ネイビー
-・グリーン
-・カーキ
-・ブラウン
-・レッド
-・オレンジ
-・イエロー
-・シルバー
-・ゴールド
-・パープル
-・ベージュ
-・マルチカラー
-・キャメル
-・スケルトン、クリア
-・ピンク
+${d.color?('・'+d.color):''}
 ━━━━━━━━━━━━━━━━━━━
 【 material 】
-・牛革（カウレザー）
-・牛革（カーフスキン）
-・牛革（キップスキン）
-・牛革（ステアスキン）
-・牛革（ブルスキン）
-・羊革（ラムレザー）
-・馬革（ホースハイド）
-・豚革（ピッグスキン）
-・山羊革（ゴートスキン）
-・サフィアーノレザー
-・レザー
-・本革
-・ワニ（クロコダイルレザー）
-・ウール（毛、羊毛含む）
-・トカゲ（リザードレザー）
-・蛇（パイソンレザー）
-・ダチョウ（オーストリッチレザー）
-・鹿革（ディアスキンレザー)
-・ミンク
-・エキゾチックレザー
-・エナメル革（パテントレザー）
-・牛床革
-・合皮
-・PVC
-・ナイロン
-・ポリエステル
-・キャンバス
-・その他
-・不明
+${d.material?('・'+d.material):''}
 ━━━━━━━━━━━━━━━━━━━
 【 accessories 】
-・タグ
-・ギャランティカード
-・保存袋
-・説明書
-・箱
-・ショルダーストラップ
-・ショルダーストラップ（社外品）
-・チャーム
-・ポーチ
-・リボン
-・本体のみ
+${d.accessories?('・'+d.accessories):''}
 ━━━━━━━━━━━━━━━━━━━
 【 condition 】
-SA：【使用感が非常に少なく綺麗】
-A：【使用感はあるが綺麗】
-AB：【使用感はあるが比較的良好】
-B：【ダメージ・使用感あり】
-※状態ランク詳細はショップ情報をご確認ください。
+${d.condition||''}
 ━━━━━━━━━━━━━━━━━━━
 【 maintenance 】
 ${d.maintenance||''}
@@ -1868,16 +1784,13 @@ ${d.maintenance||''}
 ・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
 "もう一度、美しく使える"品質を大切に、
 ブランド本来の魅力を活かしながら整えております。
-仕上がりは実物画像をご確認ください。 
-━━━━━━━━━━━━━━━━━━━
-【 serial / model no. 】
-・　/
+仕上がりは実物画像をご確認ください。
 ━━━━━━━━━━━━━━━━━━━
 【 source 】
 ・業者オークション / 国内リユースショップ
 ━━━━━━━━━━━━━━━━━━━
 【 notice 】
-※中古品の特性をご理解のうえご購入ください。 
+※中古品の特性をご理解のうえご購入ください。
 気になる点がございましたら、お気軽にコメントください！
 ━━━━━━━━━━━━━━━━━━━
 【 item no. 】
@@ -1887,62 +1800,22 @@ ${d.maintenance||''}
 ・${d.description||''}
 ━━━━━━━━━━━━━━━━━━━
 【 size 】
-メーカーサイズ表記（テンプル内側刻印）：
-レンズ幅：約cm
-ブリッジ幅：約cm
-テンプル長：約cm
-フレーム幅：約cm
-レンズ縦幅：約cm
+・レンズ幅：約mm
+・ブリッジ幅：約mm
+・テンプル長：約mm
+・フレーム幅：約mm
 ━━━━━━━━━━━━━━━━━━━
 【 color 】
-・ブラック
-・グレー
-・ホワイト
-・ブルー
-・ネイビー
-・グリーン
-・カーキ
-・ブラウン
-・レッド
-・オレンジ
-・イエロー
-・シルバー
-・ゴールド
-・パープル
-・ベージュ
-・マルチカラー
-・キャメル
-・スケルトン、クリア
-・ピンク
+${d.color?('・'+d.color):''}
 ━━━━━━━━━━━━━━━━━━━
 【 material 】
-・チタン
-・その他
-・メタル
-・不明
-・プラスチック
-・ウッド
-・べっ甲
+${d.material?('・'+d.material):''}
 ━━━━━━━━━━━━━━━━━━━
 【 accessories 】
-・タグ
-・ギャランティカード
-・保存袋
-・説明書
-・箱
-・ショルダーストラップ
-・ショルダーストラップ（社外品）
-・チャーム
-・ポーチ
-・リボン
-・本体のみ
+${d.accessories?('・'+d.accessories):''}
 ━━━━━━━━━━━━━━━━━━━
 【 condition 】
-SA：【使用感が非常に少なく綺麗】
-A：【使用感はあるが綺麗】
-AB：【使用感はあるが比較的良好】
-B：【ダメージ・使用感あり】
-※状態ランク詳細はショップ情報をご確認ください。
+${d.condition||''}
 ━━━━━━━━━━━━━━━━━━━
 【 maintenance 】
 ${d.maintenance||''}
@@ -1953,16 +1826,13 @@ ${d.maintenance||''}
 ・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
 "もう一度、美しく使える"品質を大切に、
 ブランド本来の魅力を活かしながら整えております。
-仕上がりは実物画像をご確認ください。 
-━━━━━━━━━━━━━━━━━━━
-【 serial / model no. 】
-・　/
+仕上がりは実物画像をご確認ください。
 ━━━━━━━━━━━━━━━━━━━
 【 source 】
 ・業者オークション / 国内リユースショップ
 ━━━━━━━━━━━━━━━━━━━
 【 notice 】
-※中古品の特性をご理解のうえご購入ください。 
+※中古品の特性をご理解のうえご購入ください。
 気になる点がございましたら、お気軽にコメントください！
 ━━━━━━━━━━━━━━━━━━━
 【 item no. 】
@@ -1974,80 +1844,20 @@ ${d.maintenance||''}
 【 size 】
 ・全長：約cm
 ・幅：約cm
-・一番短い位置からのウエスト長さ：約cm
-・一番長い位置からのウエスト長さ：約cm
+・最短ウエスト：約cm
+・最長ウエスト：約cm
 ━━━━━━━━━━━━━━━━━━━
 【 color 】
-・ブラック
-・グレー
-・ホワイト
-・ブルー
-・ネイビー
-・グリーン
-・カーキ
-・ブラウン
-・レッド
-・オレンジ
-・イエロー
-・シルバー
-・ゴールド
-・パープル
-・ベージュ
-・マルチカラー
-・キャメル
-・スケルトン、クリア
-・ピンク
+${d.color?('・'+d.color):''}
 ━━━━━━━━━━━━━━━━━━━
 【 material 】
-・牛革（カウレザー）
-・牛革（カーフスキン）
-・牛革（キップスキン）
-・牛革（ステアスキン）
-・牛革（ブルスキン）
-・羊革（ラムレザー）
-・馬革（ホースハイド）
-・豚革（ピッグスキン）
-・山羊革（ゴートスキン）
-・サフィアーノレザー
-・レザー
-・本革
-・ワニ（クロコダイルレザー）
-・ウール（毛、羊毛含む）
-・トカゲ（リザードレザー）
-・蛇（パイソンレザー）
-・ダチョウ（オーストリッチレザー）
-・鹿革（ディアスキンレザー)
-・ミンク
-・エキゾチックレザー
-・エナメル革（パテントレザー）
-・牛床革
-・合皮
-・PVC
-・ナイロン
-・ポリエステル
-・キャンバス
-・その他
-・不明
+${d.material?('・'+d.material):''}
 ━━━━━━━━━━━━━━━━━━━
 【 accessories 】
-・タグ
-・ギャランティカード
-・保存袋
-・説明書
-・箱
-・ショルダーストラップ
-・ショルダーストラップ（社外品）
-・チャーム
-・ポーチ
-・リボン
-・本体のみ
+${d.accessories?('・'+d.accessories):''}
 ━━━━━━━━━━━━━━━━━━━
 【 condition 】
-SA：【使用感が非常に少なく綺麗】
-A：【使用感はあるが綺麗】
-AB：【使用感はあるが比較的良好】
-B：【ダメージ・使用感あり】
-※状態ランク詳細はショップ情報をご確認ください。
+${d.condition||''}
 ━━━━━━━━━━━━━━━━━━━
 【 maintenance 】
 ${d.maintenance||''}
@@ -2058,16 +1868,13 @@ ${d.maintenance||''}
 ・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
 "もう一度、美しく使える"品質を大切に、
 ブランド本来の魅力を活かしながら整えております。
-仕上がりは実物画像をご確認ください。 
-━━━━━━━━━━━━━━━━━━━
-【 serial / model no. 】
-・　/
+仕上がりは実物画像をご確認ください。
 ━━━━━━━━━━━━━━━━━━━
 【 source 】
 ・業者オークション / 国内リユースショップ
 ━━━━━━━━━━━━━━━━━━━
 【 notice 】
-※中古品の特性をご理解のうえご購入ください。 
+※中古品の特性をご理解のうえご購入ください。
 気になる点がございましたら、お気軽にコメントください！
 ━━━━━━━━━━━━━━━━━━━
 【 item no. 】
@@ -2077,69 +1884,22 @@ ${d.maintenance||''}
 ・${d.description||''}
 ━━━━━━━━━━━━━━━━━━━
 【 size 】
-ケース：約×cm
-文字盤：約×cm
-バンド幅：約cm
-手首周り：約cm
+・ケース：約×cm
+・文字盤：約×cm
+・バンド幅：約cm
+・手首周り：約cm
 ━━━━━━━━━━━━━━━━━━━
 【 color 】
-・ブラック
-・グレー
-・ホワイト
-・ブルー
-・ネイビー
-・グリーン
-・カーキ
-・ブラウン
-・レッド
-・オレンジ
-・イエロー
-・シルバー
-・ゴールド
-・パープル
-・ベージュ
-・マルチカラー
-・キャメル
-・スケルトン、クリア
-・ピンク
+${d.color?('・'+d.color):''}
 ━━━━━━━━━━━━━━━━━━━
 【 material 】
-・ステンレス
-・チタン・樹脂（レジン）
-・セラミック
-・カーボン
-・アルミニウム
-・ゴールド10金
-・ラバー（シリコン）
-・シルバー925
-・PVDコーティング
-・ゴールド18金
-・サファイアガラス
-・ミネラルガラス
-・キャンバス
-・その他・不明
+${d.material?('・'+d.material):''}
 ━━━━━━━━━━━━━━━━━━━
 【 accessories 】
-・箱
-・内箱
-・保存袋
-・タグ
-・コマ、予備コマ
-・取扱説明書
-・保証書（国内）
-・保証書（国際）
-・調整工具
-・ピローホルダー
-・保管袋
-・充電器
-・本体のみ
+${d.accessories?('・'+d.accessories):''}
 ━━━━━━━━━━━━━━━━━━━
 【 condition 】
-SA：【使用感が非常に少なく綺麗】
-A：【使用感はあるが綺麗】
-AB：【使用感はあるが比較的良好】
-B：【ダメージ・使用感あり】
-※状態ランク詳細はショップ情報をご確認ください。
+${d.condition||''}
 ━━━━━━━━━━━━━━━━━━━
 【 maintenance 】
 ${d.maintenance||''}
@@ -2150,16 +1910,13 @@ ${d.maintenance||''}
 ・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
 "もう一度、美しく使える"品質を大切に、
 ブランド本来の魅力を活かしながら整えております。
-仕上がりは実物画像をご確認ください。 
-━━━━━━━━━━━━━━━━━━━
-【 serial / model no. 】
-・　/
+仕上がりは実物画像をご確認ください。
 ━━━━━━━━━━━━━━━━━━━
 【 source 】
 ・業者オークション / 国内リユースショップ
 ━━━━━━━━━━━━━━━━━━━
 【 notice 】
-※中古品の特性をご理解のうえご購入ください。 
+※中古品の特性をご理解のうえご購入ください。
 気になる点がございましたら、お気軽にコメントください！
 ━━━━━━━━━━━━━━━━━━━
 【 item no. 】
@@ -2170,10 +1927,17 @@ ${d.maintenance||''}
 function getTemplateData(){
   const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   const checked=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
+  const v=id=>(document.getElementById(id)||{}).value||'';
+  const condMap={'SA':'SA：【使用感が非常に少なく綤麗】','A':'A：【使用感はあるが綤麗】','AB':'AB：【使用感はあるが比較的良好】','B':'B：【ダメージ・使用感あり】'};
   return {
-    description: (document.getElementById('e_productDescription')||{}).value||'',
-    maintenance: checked.length ? checked.map(v=>'・'+v).join('\n') : '',
-    repairDetail: (document.getElementById('e_repairDetail')||{}).value||'',
+    description: v('e_productDescription'),
+    maintenance: checked.length ? checked.map(x=>'・'+x).join('\n') : '',
+    repairDetail: v('e_repairDetail'),
+    material: v('e_material'),
+    color: v('e_color'),
+    accessories: v('e_accessories'),
+    size: v('e_sizeInput'),
+    condition: condMap[v('e_conditionRank')]||'',
     itemNo: editingId&&currentEditData ? String(currentEditData.product_no||'').padStart(4,'0') : ''
   };
 }
@@ -2205,10 +1969,14 @@ function copyTemplate(){
 
 // 各入力フィールドの変更をテンプレートに反映
 function setupTemplateListeners(){
-  const fields=['e_productDescription','e_repairDetail'];
+  const fields=['e_productDescription','e_repairDetail','e_sizeInput'];
   fields.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('input',updateListingTemplate);
+  });
+  ['e_conditionRank','e_material','e_color','e_accessories'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('change',updateListingTemplate);
   });
   const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
   repairIds.forEach(id=>{
@@ -2224,7 +1992,7 @@ async function loadDashboard(){
   allProductsCache=data;
   dashChartData=data;
   document.getElementById('statTotal').textContent=data.length;
-  const preList=['仕分け前','探索','リペア前','外注リペア','撮影前','画像加工前','出品前'];
+  const preList=['仕分け前','検品','リペア前','外注リペア','撮影前','画像加工前','出品前'];
   const activeList=['出品中','発送前','受け取り評価前'];
   document.getElementById('statPurchased').textContent=data.filter(d=>preList.includes(d.status)).length;
   document.getElementById('statRepair').textContent=data.filter(d=>activeList.includes(d.status)).length;
