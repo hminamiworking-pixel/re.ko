@@ -1058,8 +1058,8 @@ button[onclick="exportProductsCSV()"]{
       <div style="margin-top:16px;display:flex;justify-content:flex-end;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 18px;min-width:280px;">
           <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">見込み利益（中央値ベース）</div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益（売上×手数料−送料）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>粗利益（利益−仕入れ）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益（売上×手数料−仕入れ）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>送料込み利益（−送料）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
           <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);"><span>利益率</span><span id="e_estRate" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
           <div style="font-size:9px;color:var(--text3);margin-top:8px;">※中央値・手数料10%・送料750円の概算。売上入力で実績計算は上記</div>
         </div>
@@ -1586,12 +1586,13 @@ function calcEstProfit(){
   if(!ep)return;
   if(!mid){ep.textContent='-';eg.textContent='-';er.textContent='-';return;}
   const FEE=0.10,SHIP=750;
-  const profit=Math.floor(mid*(1-FEE)-SHIP);      // 利益＝売上×(1−手数料)−送料
-  const gross=Math.floor(profit-cost);            // 粗利益＝利益−仕入れ
-  const rate=Math.floor(profit/mid*100);          // 利益率
+  // 本計算(STEP③)・スプレッドシートと定義を統一
+  const gross=Math.floor(mid*(1-FEE)-cost);        // 利益(粗利益)＝売上×(1−手数料)−仕入れ（送料は引かない）
+  const afterShip=Math.floor(mid*(1-FEE)-SHIP-cost);// 送料込み利益（参考）
+  const rate=Math.floor(gross/mid*100);            // 利益率＝利益(粗利益)÷売上
   const fmt=v=>'¥'+v.toLocaleString();
-  ep.textContent=fmt(profit);
-  eg.textContent=fmt(gross);eg.style.color=gross<0?'var(--red)':'var(--text)';
+  ep.textContent=fmt(gross);
+  eg.textContent=fmt(afterShip);eg.style.color=afterShip<0?'var(--red)':'var(--text)';
   er.textContent=rate+'%';er.style.color=rate<0?'var(--red)':'var(--text)';
 }
 
@@ -1770,7 +1771,7 @@ async function saveStage(step,nextStep){
   }
   if(step===3){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
-    const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitWithShip/rev*100)+'%':null;
+    const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitGross/rev*100)+'%':null;
     updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate};
     // 売上が入力されている場合のみ「入金」へ。棚番だけ直したい等のケースでステータスを誤更新しない
     if(rev)updates.status='入金';
@@ -1853,7 +1854,7 @@ function calcSoldProfit(){
   const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
   document.getElementById('e_feeRate').value=feeRate+'%';
   if(!rev)return;
-  const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship-cost);const profitGross=Math.floor(rev*(1-feeRate/100)-cost);const profitRate=Math.floor(profitWithShip/rev*100);
+  const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship-cost);const profitGross=Math.floor(rev*(1-feeRate/100)-cost);const profitRate=Math.floor(profitGross/rev*100);
   document.getElementById('e_profitAfterShipping').value=profitWithShip;document.getElementById('e_profitGross').value=profitGross;document.getElementById('e_profitRate').value=profitRate+'%';
 }
 
@@ -2376,7 +2377,7 @@ async function loadProducts(){
 
 // ==================== CSVエクスポート ====================
 function exportProductsCSV(){
-  const cols=[['No.','product_no'],['棚番','shelf_no'],['ブランド','brand_name'],['形状','item_shape'],['大カテゴリ','main_category'],['中カテゴリ','sub_category'],['フリーワード','free_word'],['仕入れ価格','purchase_price'],['仕入れ先','purchase_source'],['出品アカウント','listing_account'],['ステータス','status'],['上振れ','price_high'],['下振れ','price_low'],['中央値','price_mid'],['出品日','listing_date'],['売却日','sold_date'],['売却PF','sold_platform'],['売れ先','sold_to'],['売上','revenue'],['送料','shipping_cost'],['利益','profit_after_shipping'],['粗利益','profit_gross'],['利益率','profit_rate'],['登録日','created_at']];
+  const cols=[['No.','product_no'],['棚番','shelf_no'],['ブランド','brand_name'],['形状','item_shape'],['大カテゴリ','main_category'],['中カテゴリ','sub_category'],['フリーワード','free_word'],['仕入れ価格','purchase_price'],['仕入れ先','purchase_source'],['出品アカウント','listing_account'],['ステータス','status'],['上振れ','price_high'],['下振れ','price_low'],['中央値','price_mid'],['出品日','listing_date'],['売却日','sold_date'],['売却PF','sold_platform'],['売れ先','sold_to'],['売上','revenue'],['送料','shipping_cost'],['利益','profit_gross'],['利益(送料込)','profit_after_shipping'],['利益率','profit_rate'],['登録日','created_at']];
   // フィルタ適用後の表示対象をエクスポート（現在の絞り込みを反映）
   const no=(document.getElementById('p_no').value||'').trim();
   const brand=(document.getElementById('p_brand').value||'').trim().toLowerCase();
