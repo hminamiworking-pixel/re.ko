@@ -529,7 +529,6 @@ button[onclick="exportProductsCSV()"]{
   .card-title{font-size:13px;}
   .field input,.field select,.field textarea{font-size:16px;}
 }
-
 </style>
 </head>
 <body>
@@ -626,7 +625,7 @@ button[onclick="exportProductsCSV()"]{
       <div class="previews" id="r_previews"></div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="saveNewProduct()">仕入れ登録</button>
+      <button class="btn btn-primary" id="r_saveBtn" onclick="saveNewProduct()">仕入れ登録</button>
       <button class="btn btn-ghost" onclick="clearRegisterForm()">クリア</button>
       <span class="status-msg" id="r_saveStatus"></span>
     </div>
@@ -997,17 +996,17 @@ button[onclick="exportProductsCSV()"]{
         <div class="field"><label>売却時プラットフォーム</label>
           <select id="e_soldPlatform" onchange="calcSoldProfit()">
             <option value="">選択</option>
-            <option value="メルカリ" data-fee="10">メルカリ</option>
-            <option value="メルカリオークション" data-fee="10">メルカリオークション</option>
-            <option value="ゼンプラス" data-fee="10">ゼンプラス</option>
-            <option value="BASE" data-fee="0">BASE</option>
-            <option value="ラクマ" data-fee="4.5">ラクマ</option>
-            <option value="ラクマ公式ストア" data-fee="10">ラクマ公式ストア</option>
-            <option value="メルカリshops" data-fee="10">メルカリshops</option>
-            <option value="ジモティ" data-fee="10">ジモティ</option>
-            <option value="エコリング" data-fee="10">エコリング</option>
-            <option value="セカンドストリート" data-fee="0">セカンドストリート</option>
-            <option value="個人買取" data-fee="0">個人買取</option>
+            <option value="メルカリ">メルカリ</option>
+            <option value="メルカリオークション">メルカリオークション</option>
+            <option value="ゼンプラス">ゼンプラス</option>
+            <option value="BASE">BASE</option>
+            <option value="ラクマ">ラクマ</option>
+            <option value="ラクマ公式ストア">ラクマ公式ストア</option>
+            <option value="メルカリshops">メルカリshops</option>
+            <option value="ジモティ">ジモティ</option>
+            <option value="エコリング">エコリング</option>
+            <option value="セカンドストリート">セカンドストリート</option>
+            <option value="個人買取">個人買取</option>
           </select>
         </div>
         <div class="field"><label>適用手数料率</label><input type="text" id="e_feeRate" readonly placeholder="プラットフォーム選択で自動入力"></div>
@@ -1715,7 +1714,21 @@ async function deletePhoto(type, index, productId){
   });
 }
 
+// ==================== 全件取得（1000行制限対策） ====================
+// supabase-jsは1クエリ最大1000行しか返さないため、rangeでページングして全件取得する
+async function fetchAllRows(cols,orderCol,asc){
+  const PAGE=1000;const all=[];
+  for(let from=0;;from+=PAGE){
+    const {data,error}=await sb.from('products').select(cols).order(orderCol,{ascending:asc}).range(from,from+PAGE-1);
+    if(error){console.error('fetchAllRows error:',error);return null;}
+    all.push(...(data||[]));
+    if(!data||data.length<PAGE)return all;
+  }
+}
+
 // ==================== 商品No採番 ====================
+// ※同時登録の競合に備え、DB側で product_no にUNIQUE制約を付けること：
+//   ALTER TABLE products ADD CONSTRAINT products_product_no_key UNIQUE (product_no);
 async function getNextProductNo(){
   const {data}=await sb.from('products').select('product_no').order('product_no',{ascending:false}).limit(1);
   if(data&&data.length&&data[0].product_no)return data[0].product_no+1;
@@ -1724,22 +1737,38 @@ async function getNextProductNo(){
 
 // ==================== 新規登録 ====================
 async function saveNewProduct(){
-  const status=document.getElementById('r_saveStatus');status.className='status-msg';status.textContent='保存中...';
-  const productNo=await getNextProductNo();
-  // 写真をStorageにアップロード
-  let photoUrls=null;
-  if(registerImages.length){
-    status.textContent='写真をアップロード中...';
-    const imgs=registerImages.map(url=>{const[h,b]=url.split(',');return{base64:b,type:h.match(/:(.*?);/)?.[1]||'image/jpeg'};});
-    photoUrls=await uploadImagesToStorage(imgs,productNo,'purchase');
+  const btn=document.getElementById('r_saveBtn');
+  const status=document.getElementById('r_saveStatus');
+  if(btn&&btn.disabled)return; // 二重送信防止
+  if(btn)btn.disabled=true;
+  status.className='status-msg';status.textContent='保存中...';
+  try{
+    const rPh=Number(document.getElementById('r_priceHigh').value)||null;
+    const rPl=Number(document.getElementById('r_priceLow').value)||null;
+    const rMid=rPh&&rPl?Math.round((rPh+rPl)/2):null;
+    const base={main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:rPh&&rMid?Math.round((rPh+rMid)/2):null,price_low_mid:rPl&&rMid?Math.round((rPl+rMid)/2):null,status:'仕分け前'};
+    // 採番→insert。UNIQUE制約違反(23505)＝他端末と採番が衝突した場合は再採番してリトライ
+    let insertedRow=null,productNo=null;
+    for(let attempt=0;attempt<3;attempt++){
+      productNo=await getNextProductNo();
+      const {data:row,error}=await sb.from('products').insert({...base,product_no:productNo}).select('id').single();
+      if(!error){insertedRow=row;break;}
+      if(error.code!=='23505')throw new Error(error.message);
+    }
+    if(!insertedRow)throw new Error('商品Noの採番が競合しました。もう一度お試しください');
+    // 写真は登録成功後にアップロード（insert失敗時に孤児ファイルを残さない）
+    if(registerImages.length){
+      status.textContent='写真をアップロード中...';
+      const imgs=registerImages.map(url=>{const[h,b]=url.split(',');return{base64:b,type:h.match(/:(.*?);/)?.[1]||'image/jpeg'};});
+      const photoUrls=await uploadImagesToStorage(imgs,productNo,'purchase');
+      if(photoUrls.length)await sb.from('products').update({photo_urls:photoUrls}).eq('id',insertedRow.id);
+    }
+    status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;
+    setTimeout(()=>status.textContent='',4000);
+  }catch(err){
+    status.className='status-msg err';status.textContent='エラー: '+err.message;
   }
-  const rPh=Number(document.getElementById('r_priceHigh').value)||null;
-  const rPl=Number(document.getElementById('r_priceLow').value)||null;
-  const rMid=rPh&&rPl?Math.round((rPh+rPl)/2):null;
-  const data={product_no:productNo,photo_urls:photoUrls,main_category:document.getElementById('r_mainCategory').value,sub_category:document.getElementById('r_subCategory').value,purchase_price:Number(document.getElementById('r_purchasePrice').value)||null,item_condition:document.getElementById('r_itemCondition').value,purchase_source:document.getElementById('r_purchaseSource').value,listing_account:document.getElementById('r_listingAccount').value,brand_name:document.getElementById('r_brandName').value,item_shape:document.getElementById('r_itemShape').value,free_word:document.getElementById('r_freeWord').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:rPh&&rMid?Math.round((rPh+rMid)/2):null,price_low_mid:rPl&&rMid?Math.round((rPl+rMid)/2):null,status:'仕分け前'};
-  const {error}=await sb.from('products').insert(data);
-  if(error){status.className='status-msg err';status.textContent='エラー: '+error.message;}
-  else{status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;setTimeout(()=>status.textContent='',4000);}
+  if(btn)btn.disabled=false;
 }
 function clearRegisterForm(){document.querySelectorAll('#register input,#register select,#register textarea').forEach(el=>{if(el.type!=='file')el.value='';});registerImages=[];document.getElementById('r_previews').innerHTML='';}
 
@@ -1848,7 +1877,9 @@ function calcShipping(){
   if(rate){document.getElementById('e_shippingCost').value=rate;calcSoldProfit();}
 }
 
-const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'メルカリshops':10,'ゼンプラス':10,'BASE':0,'ラクマ':4.5,'ラクマ公式ストア':10,'ジモティ':0,'エコリング':0,'セカンドストリート':0,'個人買取':0,'入金':0};
+// 手数料率の唯一の定義（プラットフォーム→%）。HTML側のdata-fee属性は廃止済み
+// ※ジモティ・エコリングの実際の手数料率は要確認（旧data-feeでは10%になっていた）
+const FEE_MAP={'メルカリ':10,'メルカリオークション':10,'メルカリshops':10,'ゼンプラス':10,'BASE':0,'ラクマ':4.5,'ラクマ公式ストア':10,'ジモティ':0,'エコリング':0,'セカンドストリート':0,'個人買取':0};
 function getFeeRate(){const sel=document.getElementById('e_soldPlatform');const platform=sel.value;return platform&&FEE_MAP[platform]!==undefined?FEE_MAP[platform]:10;}
 function calcSoldProfit(){
   const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
@@ -2323,7 +2354,7 @@ function setupTemplateListeners(){
 // ==================== ダッシュボード ====================
 let dashChartData=[];
 async function loadDashboard(){
-  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,sold_date,revenue,profit_gross').order('product_no',{ascending:false});if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,sold_date,revenue,profit_gross','product_no',false);if(!data)return;
   allProductsCache=data;
   dashChartData=data;
   document.getElementById('statTotal').textContent=data.length;
@@ -2370,21 +2401,24 @@ function clearProductsFilter(){
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const {data}=await sb.from('products').select('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls').order('product_no',{ascending:false});if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls','product_no',false);if(!data)return;
   productsListCache=data;
   renderProductsTable(data);
 }
 
 // ==================== CSVエクスポート ====================
-function exportProductsCSV(){
+async function exportProductsCSV(){
   const cols=[['No.','product_no'],['棚番','shelf_no'],['ブランド','brand_name'],['形状','item_shape'],['大カテゴリ','main_category'],['中カテゴリ','sub_category'],['フリーワード','free_word'],['仕入れ価格','purchase_price'],['仕入れ先','purchase_source'],['出品アカウント','listing_account'],['ステータス','status'],['上振れ','price_high'],['下振れ','price_low'],['中央値','price_mid'],['出品日','listing_date'],['売却日','sold_date'],['売却PF','sold_platform'],['売れ先','sold_to'],['売上','revenue'],['送料','shipping_cost'],['利益','profit_gross'],['利益(送料込)','profit_after_shipping'],['利益率','profit_rate'],['登録日','created_at']];
+  // 一覧キャッシュはCSVに必要な列を持っていないため、エクスポート時に全列を取得し直す
+  const data=await fetchAllRows(cols.map(c=>c[1]).join(','),'product_no',false);
+  if(!data){alert('データの取得に失敗しました。時間をおいて再度お試しください');return;}
   // フィルタ適用後の表示対象をエクスポート（現在の絞り込みを反映）
   const no=(document.getElementById('p_no').value||'').trim();
   const brand=(document.getElementById('p_brand').value||'').trim().toLowerCase();
   const shape=(document.getElementById('p_shape').value||'').trim().toLowerCase();
   const shelf=(document.getElementById('p_shelf').value||'').trim().toLowerCase();
   const status=document.getElementById('p_status').value;
-  const rows=productsListCache.filter(d=>{
+  const rows=data.filter(d=>{
     if(no&&!String(d.product_no||'').includes(no))return false;
     if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
     if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
@@ -2434,7 +2468,7 @@ function getMonthWeek(dateStr){const d=new Date(dateStr);return Math.ceil(d.getD
 function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.getFullYear(),0,1);return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);}
 
 async function loadSales(){
-  const {data}=await sb.from('products').select('id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category').order('created_at',{ascending:true});if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category','created_at',true);if(!data)return;
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
