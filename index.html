@@ -926,8 +926,8 @@ button[onclick="exportProductsCSV()"]{
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">🔍 トレンド検索</button>
-        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()">✨ AI自動入力</button>
+        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()"> トレンド検索</button>
+        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()"> AI自動入力</button>
         <span class="status-msg" id="e_aiStatus"></span>
       </div>
       <div id="e_progressBar" style="display:none;margin-top:10px;background:var(--surface2);border-radius:20px;height:4px;overflow:hidden;">
@@ -946,6 +946,9 @@ button[onclick="exportProductsCSV()"]{
             <option value="B">B：ダメージ・使用感あり</option>
           </select>
         </div>
+        <div class="field"><label>出品時商品状態</label>
+          <select id="e_listingCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select>
+        </div>
         <div class="field"><label>素材（material）</label>
           <select id="e_material" onchange="updateListingTemplate()"><option value="">中カテゴリーを選択</option></select>
         </div>
@@ -961,6 +964,15 @@ button[onclick="exportProductsCSV()"]{
             <option>タグ</option><option>ギャランティカード</option><option>保存袋</option><option>説明書</option><option>箱</option><option>ショルダーストラップ</option><option>ショルダーストラップ（社外品）</option><option>チャーム</option><option>ポーチ</option><option>リボン</option><option>本体のみ</option>
           </select>
         </div>
+        <!-- ===== 登録時の想定相場（STEP①入力値・参考表示）===== -->
+        <div class="field full" style="grid-column:1/-1;border-top:1px dashed var(--border2);margin-top:6px;padding-top:12px;">
+          <label style="color:var(--teal);font-weight:600;">💰 登録時の想定相場（STEP①で入力・参考）</label>
+        </div>
+        <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" readonly></div>
+        <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" readonly></div>
+        <div class="field"><label>中央値</label><input type="number" id="e_priceMid" readonly></div>
+        <div class="field"><label>上振れ中央値</label><input type="number" id="e_priceHighMid" readonly></div>
+        <div class="field"><label>下振れ中央値</label><input type="number" id="e_priceLowMid" readonly></div>
         <div class="field full"><label>サイズ（size・財布用フリー入力）</label><input type="text" id="e_sizeInput" placeholder="例：縦9cm 横11cm マチ2cm" oninput="updateListingTemplate()"></div>
         <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
@@ -1789,7 +1801,7 @@ async function saveStage(step,nextStep){
   if(step===2){
     const repairIds=['rep_cleaning','rep_fullpaint','rep_partialpaint','rep_coba','rep_metal','rep_plating','rep_thread','rep_fabric','rep_ziphandle','rep_zipslider','rep_button','rep_initial','rep_stain','rep_ultrasonic','rep_none'];
     const checkedRepairs=repairIds.filter(id=>document.getElementById(id)?.checked).map(id=>document.getElementById(id).value);
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:document.getElementById('e_accessories').value,size_input:document.getElementById('e_sizeInput').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,listing_condition:document.getElementById('e_listingCondition').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:document.getElementById('e_accessories').value,size_input:document.getElementById('e_sizeInput').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_content:document.getElementById('e_repairContent').value,repair_detail:document.getElementById('e_repairDetail').value,size_detail:document.getElementById('e_sizeDetail').value};
     if(editListingImages.length){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
@@ -1917,7 +1929,7 @@ async function openEdit(id){
   set('e_subCategory',normSub);
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   updateMaterialOptions(data.material||'');
-  set('e_conditionRank',data.condition_rank);set('e_color',data.color);set('e_accessories',data.accessories);set('e_sizeInput',data.size_input);
+  set('e_conditionRank',data.condition_rank);set('e_listingCondition',data.listing_condition);set('e_color',data.color);set('e_accessories',data.accessories);set('e_sizeInput',data.size_input);
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
@@ -2472,7 +2484,7 @@ async function loadSales(){
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
-  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上</p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>総利益</p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div>`;
+  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上 <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">（各商品の売上金額の合計）</span></p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>純利益 <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">（売上×(1−手数料)−仕入れ の合計）</span></p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div>`;
   buildSheetTable(data);
   salesListCache=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date));renderSalesTable(salesListCache);
 }
