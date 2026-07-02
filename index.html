@@ -196,6 +196,12 @@ tr:hover td{background:var(--surface2);}
 .photo-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#c42b2b;color:#fff;border:none;cursor:pointer;font-size:11px;line-height:18px;text-align:center;padding:0;z-index:1;display:flex;align-items:center;justify-content:center;}
 .photo-del:hover{background:#a01f1f;}
 .thumb-empty{width:44px;height:44px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);}
+/* ===== IMAGE LIGHTBOX ===== */
+.img-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;align-items:center;justify-content:center;padding:24px;}
+.img-lightbox.open{display:flex;}
+.img-lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+.img-lightbox-close{position:absolute;top:16px;right:16px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.92);border:none;font-size:26px;line-height:1;cursor:pointer;color:#1a1a18;display:flex;align-items:center;justify-content:center;z-index:1;}
+.img-lightbox-close:hover{background:#fff;}
 
 /* ===== POLISHED UI OVERRIDES ===== */
 :root{
@@ -1081,6 +1087,12 @@ button[onclick="exportProductsCSV()"]{
       </div>
     </div>
   </div>
+</div>
+
+<!-- IMAGE LIGHTBOX -->
+<div class="img-lightbox" id="imgLightbox" onclick="closeImageViewer(event)">
+  <button class="img-lightbox-close" onclick="closeImageViewer(event)">×</button>
+  <img id="imgLightboxImg" src="" alt="拡大画像">
 </div>
 
 <!-- VIEW MODAL -->
@@ -2387,9 +2399,20 @@ let productsListCache=[];
 function renderProductsTable(data){
   document.getElementById('p_count').textContent=data.length+'件';
   document.getElementById('productsTable').innerHTML=data.length?data.map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[0]}">`:`<div class="thumb-empty">なし</div>`;
+    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[0]}" style="cursor:zoom-in;" onclick="openImageViewer('${d.listing_photo_urls[0]}')">`:`<div class="thumb-empty">なし</div>`;
     return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
   }).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
+}
+// ==================== 画像拡大ビューア ====================
+function openImageViewer(url){
+  if(!url)return;
+  document.getElementById('imgLightboxImg').src=url;
+  document.getElementById('imgLightbox').classList.add('open');
+}
+function closeImageViewer(e){
+  // 画像自体のクリックでは閉じない（背景・×ボタンのみ閉じる）
+  if(e&&e.target&&e.target.id==='imgLightboxImg')return;
+  document.getElementById('imgLightbox').classList.remove('open');
 }
 function applyProductsFilter(){
   const no=(document.getElementById('p_no').value||'').trim();
