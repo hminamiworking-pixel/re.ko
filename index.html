@@ -825,7 +825,7 @@ button[onclick="exportProductsCSV()"]{
     <!-- STEP1 -->
     <div class="stage-panel active" id="step1panel">
       <div class="section-label">仕入れ情報</div>
-      <div class="section-label">📦 仕入れ時写真</div>
+      <div class="section-label"> 仕入れ時写真</div>
       <div class="photo-gallery" id="e_purchasePhotos"></div>
       <div class="upload-area" style="margin-bottom:12px;">
         <input type="file" id="e_purchasePhotoInput" accept="image/*" multiple onchange="handleEditPhotos(event,'purchase')">
@@ -887,7 +887,7 @@ button[onclick="exportProductsCSV()"]{
         <!-- 結果 -->
         <div id="trendResult" style="display:none;">
           <div class="trend-section">
-            <div class="trend-section-title">🔥 注目キーワード（クリックで追加）</div>
+            <div class="trend-section-title"> 注目キーワード（クリックで追加）</div>
             <div class="trend-tags" id="trendHotTags"></div>
           </div>
           <div class="trend-section">
@@ -895,7 +895,7 @@ button[onclick="exportProductsCSV()"]{
             <div class="trend-price-row" id="trendPriceRow"></div>
           </div>
           <div class="trend-section">
-            <div class="trend-section-title">📊 トレンドサマリー</div>
+            <div class="trend-section-title"> トレンドサマリー</div>
             <div class="trend-summary" id="trendSummary"></div>
           </div>
           <div style="font-size:10px;color:var(--text3);margin-top:8px;" id="trendUpdatedAt"></div>
@@ -908,7 +908,7 @@ button[onclick="exportProductsCSV()"]{
         <span style="font-size:12px;color:var(--text3);">中カテゴリーを選択してください</span>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">🛍 出品用写真</div>
+      <div class="section-label" style="margin-top:16px;"> 出品用写真</div>
       <div class="photo-gallery" id="e_listingPhotos"></div>
       <div class="upload-area" style="margin-bottom:8px;">
         <input type="file" id="e_listingPhotoInput" accept="image/*" multiple onchange="handleEditPhotos(event,'listing')">
@@ -918,8 +918,8 @@ button[onclick="exportProductsCSV()"]{
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">🔍 トレンド検索</button>
-        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()">✨ AI自動入力</button>
+        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()"> トレンド検索</button>
+        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()"> AI自動入力</button>
         <span class="status-msg" id="e_aiStatus"></span>
       </div>
       <div id="e_progressBar" style="display:none;margin-top:10px;background:var(--surface2);border-radius:20px;height:4px;overflow:hidden;">
@@ -957,7 +957,7 @@ button[onclick="exportProductsCSV()"]{
         </div>
         <!-- ===== 登録時の想定相場（STEP①入力値・参考表示）===== -->
         <div class="field full" style="grid-column:1/-1;border-top:1px dashed var(--border2);margin-top:6px;padding-top:12px;">
-          <label style="color:var(--teal);font-weight:600;">💰 登録時の想定相場（STEP①で入力・参考）</label>
+          <label style="color:var(--teal);font-weight:600;"> 登録時の想定相場（STEP①で入力・参考）</label>
         </div>
         <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" readonly></div>
         <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" readonly></div>
