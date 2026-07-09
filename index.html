@@ -741,6 +741,11 @@ button[onclick="exportProductsCSV()"]{
           <div style="position:relative;height:220px;"><canvas id="chartAvgSale"></canvas></div>
         </div>
       </div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">ステータス別 金額サマリー</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;margin-bottom:24px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">ステータス別 合計（下振れ値・中央値・売却金額(送料なし)・仕入れ価格）</div>
+        <div style="position:relative;height:320px;"><canvas id="chartStatusAmounts"></canvas></div>
+      </div>
       <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">円グラフ</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
@@ -825,7 +830,7 @@ button[onclick="exportProductsCSV()"]{
     <!-- STEP1 -->
     <div class="stage-panel active" id="step1panel">
       <div class="section-label">仕入れ情報</div>
-      <div class="section-label"> 仕入れ時写真</div>
+      <div class="section-label">📦 仕入れ時写真</div>
       <div class="photo-gallery" id="e_purchasePhotos"></div>
       <div class="upload-area" style="margin-bottom:12px;">
         <input type="file" id="e_purchasePhotoInput" accept="image/*" multiple onchange="handleEditPhotos(event,'purchase')">
@@ -887,7 +892,7 @@ button[onclick="exportProductsCSV()"]{
         <!-- 結果 -->
         <div id="trendResult" style="display:none;">
           <div class="trend-section">
-            <div class="trend-section-title"> 注目キーワード（クリックで追加）</div>
+            <div class="trend-section-title">🔥 注目キーワード（クリックで追加）</div>
             <div class="trend-tags" id="trendHotTags"></div>
           </div>
           <div class="trend-section">
@@ -895,7 +900,7 @@ button[onclick="exportProductsCSV()"]{
             <div class="trend-price-row" id="trendPriceRow"></div>
           </div>
           <div class="trend-section">
-            <div class="trend-section-title"> トレンドサマリー</div>
+            <div class="trend-section-title">📊 トレンドサマリー</div>
             <div class="trend-summary" id="trendSummary"></div>
           </div>
           <div style="font-size:10px;color:var(--text3);margin-top:8px;" id="trendUpdatedAt"></div>
@@ -908,7 +913,7 @@ button[onclick="exportProductsCSV()"]{
         <span style="font-size:12px;color:var(--text3);">中カテゴリーを選択してください</span>
       </div>
 
-      <div class="section-label" style="margin-top:16px;"> 出品用写真</div>
+      <div class="section-label" style="margin-top:16px;">🛍 出品用写真</div>
       <div class="photo-gallery" id="e_listingPhotos"></div>
       <div class="upload-area" style="margin-bottom:8px;">
         <input type="file" id="e_listingPhotoInput" accept="image/*" multiple onchange="handleEditPhotos(event,'listing')">
@@ -918,8 +923,8 @@ button[onclick="exportProductsCSV()"]{
         <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()"> トレンド検索</button>
-        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()"> AI自動入力</button>
+        <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">🔍 トレンド検索</button>
+        <button class="btn btn-ai" id="e_aiBtn" onclick="generateAI()">✨ AI自動入力</button>
         <span class="status-msg" id="e_aiStatus"></span>
       </div>
       <div id="e_progressBar" style="display:none;margin-top:10px;background:var(--surface2);border-radius:20px;height:4px;overflow:hidden;">
@@ -938,9 +943,6 @@ button[onclick="exportProductsCSV()"]{
             <option value="B">B：ダメージ・使用感あり</option>
           </select>
         </div>
-        <div class="field"><label>出品時商品状態</label>
-          <select id="e_listingCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select>
-        </div>
         <div class="field"><label>素材（material）</label>
           <select id="e_material" onchange="updateListingTemplate()"><option value="">中カテゴリーを選択</option></select>
         </div>
@@ -950,6 +952,8 @@ button[onclick="exportProductsCSV()"]{
             <option>ブラック</option><option>グレー</option><option>ホワイト</option><option>ブルー</option><option>ネイビー</option><option>グリーン</option><option>カーキ</option><option>ブラウン</option><option>レッド</option><option>オレンジ</option><option>イエロー</option><option>シルバー</option><option>ゴールド</option><option>パープル</option><option>ベージュ</option><option>マルチカラー</option><option>キャメル</option><option>スケルトン、クリア</option><option>ピンク</option>
           </select>
         </div>
+        <div class="field"><label>シリアル番号（serial no.）</label><input type="text" id="e_serialNo" placeholder="例：SN123456" oninput="updateListingTemplate()"></div>
+        <div class="field"><label>モデル番号（model no.）</label><input type="text" id="e_modelNo" placeholder="例：M12345" oninput="updateListingTemplate()"></div>
         <div class="field full"><label>付属品（accessories・複数選択可／中カテゴリーで自動切替）</label>
           <div id="e_accessoriesBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-top:4px;">
             <span style="font-size:12px;color:var(--text3);">中カテゴリーを選択してください</span>
@@ -957,17 +961,17 @@ button[onclick="exportProductsCSV()"]{
         </div>
         <!-- ===== 登録時の想定相場（STEP①入力値・参考表示）===== -->
         <div class="field full" style="grid-column:1/-1;border-top:1px dashed var(--border2);margin-top:6px;padding-top:12px;">
-          <label style="color:var(--teal);font-weight:600;"> 登録時の想定相場（STEP①で入力・参考）</label>
+          <label style="color:var(--teal);font-weight:600;">💰 想定相場（上振れ・下振れは編集可／中央値は自動計算）</label>
         </div>
-        <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" readonly></div>
-        <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" readonly></div>
+        <div class="field"><label>販売予定価格（上振れ）</label><input type="number" id="e_priceHigh" oninput="calcEditPricesLive()"></div>
+        <div class="field"><label>販売予定価格（下振れ）</label><input type="number" id="e_priceLow" oninput="calcEditPricesLive()"></div>
         <div class="field"><label>中央値</label><input type="number" id="e_priceMid" readonly></div>
         <div class="field"><label>上振れ中央値</label><input type="number" id="e_priceHighMid" readonly></div>
         <div class="field"><label>下振れ中央値</label><input type="number" id="e_priceLowMid" readonly></div>
         <div class="field full"><label>サイズ（size・財布用フリー入力）</label><input type="text" id="e_sizeInput" placeholder="例：縦9cm 横11cm マチ2cm" oninput="updateListingTemplate()"></div>
         <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
-        <div class="field full"><label>キーワード（コピー用）</label><textarea id="e_keywordsCopy" placeholder="AIが自動生成"></textarea></div>
+        <div class="field full"><label>商品名タイトル候補（コピー用・AI5案）</label><textarea id="e_keywordsCopy" placeholder="AIが5案を自動生成"></textarea></div>
         <div class="field full"><label>商品文章</label><textarea id="e_productDescription" placeholder="AIが自動生成" style="min-height:100px;"></textarea></div>
         <div class="field full"><label>リペア内容（詳細）</label><textarea id="e_repairDetail" placeholder="AIが自動生成"></textarea></div>
       </div>
@@ -1313,6 +1317,29 @@ function setProgress(pct, msg){
   if(msg){const s=document.getElementById('e_aiStatus');s.className='status-msg';s.textContent=msg;}
 }
 
+// トレンド結果をパネルに描画（新規取得・保存済み復元で共用）
+function renderTrendResult(trend){
+  if(!trend)return;
+  const tagsEl=document.getElementById('trendHotTags');
+  tagsEl.innerHTML='';
+  (trend.hotKeywords||[]).forEach((kw,i)=>{
+    const tag=document.createElement('span');
+    tag.className='trend-tag'+(i<2?' hot':'');
+    tag.textContent=kw;tag.title='クリックでキーワードに追加';
+    tag.onclick=()=>appendKeyword(kw);
+    tagsEl.appendChild(tag);
+  });
+  document.getElementById('trendPriceRow').innerHTML=
+    '<div class="trend-price-card"><div class="label">下限</div><div class="value">¥'+(trend.priceMin||0).toLocaleString()+'</div></div>'
+    +'<div class="trend-price-card"><div class="label">中央値</div><div class="value">¥'+(trend.priceMid||0).toLocaleString()+'</div></div>'
+    +'<div class="trend-price-card"><div class="label">上限</div><div class="value">¥'+(trend.priceMax||0).toLocaleString()+'</div></div>';
+  document.getElementById('trendSummary').textContent=trend.summary||'データなし';
+  document.getElementById('trendUpdatedAt').textContent=trend._updatedAt||'';
+  document.getElementById('trendEmpty').style.display='none';
+  document.getElementById('trendLoading').style.display='none';
+  document.getElementById('trendResult').style.display='block';
+}
+
 // ==================== トレンド検索 ====================
 async function fetchTrend(){
   const brand=document.getElementById('e_brandName').value.trim();
@@ -1348,25 +1375,9 @@ async function fetchTrend(){
     const trendData=await trendRes.json();
     const trendText=(trendData.content||[]).filter(i=>i.type==='text').map(i=>i.text).join('');
     const trend=JSON.parse(trendText.replace(/```json|```/g,'').trim());
-    trendCache=trend;
-
-    const tagsEl=document.getElementById('trendHotTags');
-    tagsEl.innerHTML='';
-    (trend.hotKeywords||[]).forEach((kw,i)=>{
-      const tag=document.createElement('span');
-      tag.className='trend-tag'+(i<2?' hot':'');
-      tag.textContent=kw;tag.title='クリックでキーワードに追加';
-      tag.onclick=()=>appendKeyword(kw);
-      tagsEl.appendChild(tag);
-    });
-    document.getElementById('trendPriceRow').innerHTML=
-      '<div class="trend-price-card"><div class="label">下限</div><div class="value">¥'+(trend.priceMin||0).toLocaleString()+'</div></div>'
-      +'<div class="trend-price-card"><div class="label">中央値</div><div class="value">¥'+(trend.priceMid||0).toLocaleString()+'</div></div>'
-      +'<div class="trend-price-card"><div class="label">上限</div><div class="value">¥'+(trend.priceMax||0).toLocaleString()+'</div></div>';
-    document.getElementById('trendSummary').textContent=trend.summary||'データなし';
-    document.getElementById('trendUpdatedAt').textContent='取得日時：'+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 '+now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0'));
-    document.getElementById('trendLoading').style.display='none';
-    document.getElementById('trendResult').style.display='block';
+    trend._updatedAt='取得日時：'+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 '+now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0'));
+    trendCache=trend;      // 保存で残せるようキャッシュに保持
+    renderTrendResult(trend);
 
     status.className='status-msg ok';status.textContent='トレンド取得完了';
   }catch(err){
@@ -1432,7 +1443,8 @@ async function generateAI(){
       +'bigWord/midWord/smallWord/longTailWord=メルカリ検索SEOワードを粒度が大→小になるように（bigWord:最重要の1語、midWord:中程度、smallWord:補足、longTailWord:複合ロングテール）。各1〜数語。\n'
       +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
-      +'JSONのみ返答：{"brandName":"","itemShape":"","writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":"","keywords":"","keywordsCopy":"","productDescription":"","repairDetail":""}';
+      +'titleCandidates=商品名タイトルの候補を5個（配列）。各候補は「'+buildTitleFormatHint()+'」の並びで作る。\n'
+      +'JSONのみ返答：{"brandName":"","itemShape":"","writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":"","keywords":"","titleCandidates":["","","","",""],"productDescription":"","repairDetail":""}';
 
     const messages=hasPhotos
       ? [{role:'user',content:[...editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
@@ -1462,7 +1474,8 @@ async function generateAI(){
     // 商品タイトルは固定の文字配列で組み立てる（下記 buildProductTitle）
     document.getElementById('e_productTitle').value=buildProductTitle(r);
     document.getElementById('e_keywords').value=r.keywords||'';
-    document.getElementById('e_keywordsCopy').value=r.keywordsCopy||'';
+    // キーワード（コピー用）欄＝商品名タイトル候補5案（1行1案）
+    document.getElementById('e_keywordsCopy').value=Array.isArray(r.titleCandidates)?r.titleCandidates.filter(Boolean).join('\n'):(r.keywordsCopy||'');
     document.getElementById('e_productDescription').value=r.productDescription||'';
     document.getElementById('e_repairDetail').value=r.repairDetail||'';
     calcEditPrices();
@@ -1482,14 +1495,15 @@ async function generateAI(){
   btn.disabled=false;
 }
 
-// キーワードをフィールドに追加
+// キーワードをフィールドに追加（SEOキーワード欄のみ。コピー用欄はタイトル候補なので触らない）
 function appendKeyword(kw){
   const kwField=document.getElementById('e_keywords');
-  const kwCopyField=document.getElementById('e_keywordsCopy');
   const existing=kwField.value.trim();
   kwField.value=existing?existing+' '+kw:kw;
-  const existingCopy=kwCopyField.value.trim();
-  kwCopyField.value=existingCopy?existingCopy+' '+kw:kw;
+}
+// タイトル固定配列の説明（AIプロンプト用）
+function buildTitleFormatHint(){
+  return '【ライティングタイトル】〈全角空白〉ブランド名〈全角空白〉形状〈半角空白〉ビッグワード〈半角空白〉ミドルワード〈半角空白〉スモールワード〈半角空白〉ロングテール〈全角空白〉カラー〈半角空白〉サイズ';
 }
 
 // ==================== グラフ ====================
@@ -1524,8 +1538,27 @@ function switchDestMode(mode,btn){
 
 function redrawAllCharts(){
   drawBarListingSold();drawBarPurchaseTotal();drawBarPurchaseStats();drawBarAvgSale();
+  drawStatusAmounts();
   drawStatusPie();drawPlatformMonthPie();drawDestPie();
   drawCategoryPies();
+}
+
+// ステータス別：下振れ値・中央値・売却金額(送料なし)・仕入れ価格の合計を棒グラフで
+function drawStatusAmounts(){
+  const sums={};
+  ALL_STATUSES.forEach(s=>sums[s]={low:0,mid:0,rev:0,cost:0});
+  chartAllData.forEach(d=>{const s=d.status;if(!sums[s])return;sums[s].low+=d.price_low||0;sums[s].mid+=d.price_mid||0;sums[s].rev+=d.revenue||0;sums[s].cost+=d.purchase_price||0;});
+  const labels=ALL_STATUSES.filter(s=>sums[s].low||sums[s].mid||sums[s].rev||sums[s].cost);
+  destroyChart('chartStatusAmounts');
+  if(!labels.length)return;
+  chartInstances['chartStatusAmounts']=new Chart(document.getElementById('chartStatusAmounts').getContext('2d'),{
+    type:'bar',data:{labels,datasets:[
+      {label:'下振れ値計',data:labels.map(s=>sums[s].low),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
+      {label:'中央値計',data:labels.map(s=>sums[s].mid),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
+      {label:'売却金額計(送料なし)',data:labels.map(s=>sums[s].rev),backgroundColor:'rgba(255,171,64,0.85)',borderRadius:3},
+      {label:'仕入れ価格計',data:labels.map(s=>sums[s].cost),backgroundColor:'rgba(139,101,230,0.85)',borderRadius:3},
+    ]},options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
+  });
 }
 
 function getMonthlyBase(yr){
@@ -1701,8 +1734,22 @@ function calcEditPrices(){
 }
 
 // 見込み利益（中央値ベース・手数料10%・送料750円の概算）。中央値は登録済みデータから取得
+// STEP2で上振れ・下振れを編集した時：中央値3種を再計算し見込み利益へ反映
+function calcEditPricesLive(){
+  const h=Number(document.getElementById('e_priceHigh').value)||0;
+  const l=Number(document.getElementById('e_priceLow').value)||0;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  if(h&&l){
+    const mid=Math.round((h+l)/2);
+    set('e_priceMid',mid);set('e_priceHighMid',Math.round((h+mid)/2));set('e_priceLowMid',Math.round((l+mid)/2));
+  }else{
+    set('e_priceMid','');set('e_priceHighMid','');set('e_priceLowMid','');
+  }
+  calcEstProfit();
+}
 function calcEstProfit(){
-  const mid=Number(currentEditData?.price_mid)||0;
+  const midField=document.getElementById('e_priceMid');
+  const mid=Number(midField&&midField.value)||Number(currentEditData?.price_mid)||0;
   const cost=currentEditData?.purchase_price||0;
   const ep=document.getElementById('e_estProfit'),eg=document.getElementById('e_estGross'),er=document.getElementById('e_estRate');
   if(!ep)return;
@@ -1911,7 +1958,12 @@ async function saveStage(step,nextStep){
   }
   if(step===2){
     const checkedRepairs=getCheckedRepairs();
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,listing_condition:document.getElementById('e_listingCondition').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:document.getElementById('e_sizeInput').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value};
+    const rPh=Number(document.getElementById('e_priceHigh').value)||null;
+    const rPl=Number(document.getElementById('e_priceLow').value)||null;
+    const rMid=(rPh&&rPl)?Math.round((rPh+rPl)/2):null;
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:document.getElementById('e_sizeInput').value,serial_no:document.getElementById('e_serialNo').value,model_no:document.getElementById('e_modelNo').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:(rPh&&rMid)?Math.round((rPh+rMid)/2):null,price_low_mid:(rPl&&rMid)?Math.round((rPl+rMid)/2):null};
+    // トレンド検索結果を保存（検索した時のみ更新）
+    if(trendCache)updates.trend_data=JSON.stringify(trendCache);
     if(editListingImages.length){
       statusEl.textContent='写真をアップロード中...';
       const productNo=currentEditData?.product_no||'unknown';
@@ -1924,8 +1976,9 @@ async function saveStage(step,nextStep){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
     const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitGross/rev*100)+'%':null;
     updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate};
-    // 売上が入力されている場合のみ「入金」へ。棚番だけ直したい等のケースでステータスを誤更新しない
-    if(rev)updates.status='入金';
+    // 「売却日」と「売上」の両方が入っている時だけ「入金」へ。
+    // （売上だけ・棚番だけの編集で勝手に入金にならないようにする）
+    if(rev&&document.getElementById('e_soldDate').value)updates.status='入金';
   }
   // ===== 差分保存 =====
   // currentEditDataと比較し、実際に変わった項目だけをDBへ送る。
@@ -2025,6 +2078,8 @@ async function openEdit(id){
   document.getElementById('trendResult').style.display='none';
   document.getElementById('trendLoading').style.display='none';
   document.getElementById('trendBrandLabel').textContent='';
+  // 保存済みトレンド結果があれば復元表示
+  if(data.trend_data){try{const t=(typeof data.trend_data==='string')?JSON.parse(data.trend_data):data.trend_data;trendCache=t;renderTrendResult(t);}catch(e){console.error('trend restore失敗',e);}}
 
   const pg=document.getElementById('e_purchasePhotos');pg.innerHTML='';
   if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach((url,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=url;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(url);const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.onclick=()=>deletePhoto('purchase',i,data.id);wrap.appendChild(img);wrap.appendChild(del);pg.appendChild(wrap);});}
@@ -2039,7 +2094,7 @@ async function openEdit(id){
   set('e_subCategory',normSub);
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   updateMaterialOptions(data.material||'');
-  set('e_conditionRank',data.condition_rank);set('e_listingCondition',data.listing_condition);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_sizeInput',data.size_input);
+  set('e_conditionRank',data.condition_rank);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_sizeInput',data.size_input);set('e_serialNo',data.serial_no);set('e_modelNo',data.model_no);
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
@@ -2147,29 +2202,26 @@ function clearSheetFilter(){document.getElementById('sf_year').value='';document
 function buildSheetTable(data){
   const y=v=>v?'¥'+v.toLocaleString():'-';
   const tree={};
+  // 仕入れ・売却ともに「仕入れ日（登録日 created_at）」で集計する
   data.forEach(d=>{
-    // 仕入れは登録日で集計
     const cd=d.created_at?d.created_at.slice(0,10):null;
-    if(cd){
-      const yr=cd.slice(0,4);const mo=cd.slice(5,7);const wk=getMonthWeek(cd)+'週';
-      if(!tree[yr])tree[yr]={months:{}};
-      if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
-      if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0,priceMid:0,priceLow:0,shipping:0};
-      tree[yr].months[mo].weeks[wk].purchaseCount++;
-      tree[yr].months[mo].weeks[wk].purchaseSum+=d.purchase_price||0;
-    }
-    // 売却は売却日で集計
+    if(!cd)return;
+    const yr=cd.slice(0,4);const mo=cd.slice(5,7);const wk=getMonthWeek(cd)+'週';
+    if(!tree[yr])tree[yr]={months:{}};
+    if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
+    if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0,priceMid:0,priceLow:0,shipping:0};
+    const w=tree[yr].months[mo].weeks[wk];
+    // 仕入れ
+    w.purchaseCount++;
+    w.purchaseSum+=d.purchase_price||0;
+    // 売却済みなら、その売上/利益も同じ仕入れ日の枠に加算
     if(d.sold_date){
-      const sd=d.sold_date;const yr=sd.slice(0,4);const mo=sd.slice(5,7);const wk=getMonthWeek(sd)+'週';
-      if(!tree[yr])tree[yr]={months:{}};
-      if(!tree[yr].months[mo])tree[yr].months[mo]={weeks:{}};
-      if(!tree[yr].months[mo].weeks[wk])tree[yr].months[mo].weeks[wk]={purchaseCount:0,purchaseSum:0,soldCount:0,revenue:0,profit:0,priceMid:0,priceLow:0,shipping:0};
-      tree[yr].months[mo].weeks[wk].soldCount++;
-      tree[yr].months[mo].weeks[wk].revenue+=d.revenue||0;
-      tree[yr].months[mo].weeks[wk].profit+=d.profit_gross||0;
-      tree[yr].months[mo].weeks[wk].priceMid+=d.price_mid||0;
-      tree[yr].months[mo].weeks[wk].priceLow+=d.price_low||0;
-      tree[yr].months[mo].weeks[wk].shipping+=d.shipping_cost||0;
+      w.soldCount++;
+      w.revenue+=d.revenue||0;
+      w.profit+=d.profit_gross||0;
+      w.priceMid+=d.price_mid||0;
+      w.priceLow+=d.price_low||0;
+      w.shipping+=d.shipping_cost||0;
     }
   });
   let rows='';
@@ -2214,6 +2266,9 @@ ${d.color?('・'+d.color):''}
 【 material 】
 ${d.material?('・'+d.material):''}
 ━━━━━━━━━━━━━━━━━━━
+【 serial / model no. 】
+・${d.serialNo||''} / ${d.modelNo||''}
+━━━━━━━━━━━━━━━━━━━
 【 accessories 】
 ${d.accessories||''}
 ━━━━━━━━━━━━━━━━━━━
@@ -2257,6 +2312,8 @@ function getTemplateData(){
     repairDetail: v('e_repairDetail'),
     material: v('e_material'),
     color: v('e_color'),
+    serialNo: v('e_serialNo'),
+    modelNo: v('e_modelNo'),
     accessories: acc.length ? acc.map(x=>'・'+x).join('\n') : '',
     size: sizeBlock,
     structDetails: STRUCT_DETAILS[cat]||'',
@@ -2328,7 +2385,9 @@ let productsListCache=[];
 function renderProductsTable(data){
   document.getElementById('p_count').textContent=data.length+'件';
   document.getElementById('productsTable').innerHTML=data.length?data.map(d=>{
-    const thumb=d.listing_photo_urls&&d.listing_photo_urls.length?`<img class="thumb" src="${d.listing_photo_urls[0]}" style="cursor:zoom-in;" onclick="openImageViewer('${d.listing_photo_urls[0]}')">`:`<div class="thumb-empty">なし</div>`;
+    // 出品用写真が入るまでは仕入れ時写真の1枚目、入ったら出品用の1枚目に切替
+    const photo=(d.listing_photo_urls&&d.listing_photo_urls.length)?d.listing_photo_urls[0]:((d.photo_urls&&d.photo_urls.length)?d.photo_urls[0]:'');
+    const thumb=photo?`<img class="thumb" src="${photo}" style="cursor:zoom-in;" onclick="openImageViewer('${photo}')">`:`<div class="thumb-empty">なし</div>`;
     return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
   }).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
 }
@@ -2365,7 +2424,7 @@ function clearProductsFilter(){
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls','product_no',false);if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls','product_no',false);if(!data)return;
   productsListCache=data;
   renderProductsTable(data);
 }
