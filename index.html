@@ -838,7 +838,7 @@ button[onclick="exportProductsCSV()"]{
       </div>
       <div class="grid">
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
-        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateMaterialOptions();renderAccessoryOptions(this.value);renderRepairOptions(this.value);updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
+        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateMaterialOptions();renderAccessoryOptions(this.value);renderRepairOptions(this.value);renderDetailsOptions(this.value);updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
         <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
@@ -969,6 +969,10 @@ button[onclick="exportProductsCSV()"]{
         <div class="field"><label>上振れ中央値</label><input type="number" id="e_priceHighMid" readonly></div>
         <div class="field"><label>下振れ中央値</label><input type="number" id="e_priceLowMid" readonly></div>
         <div class="field full"><label>サイズ（size・財布用フリー入力）</label><input type="text" id="e_sizeInput" placeholder="例：縦9cm 横11cm マチ2cm" oninput="updateListingTemplate()"></div>
+        <div class="field full" id="e_detailsWrap" style="display:none;grid-column:1/-1;border-top:1px dashed var(--border2);margin-top:6px;padding-top:12px;">
+          <label style="color:var(--teal);font-weight:600;">details（財布・バッグのみ／開閉仕様・ポケット・テンプレに反映）</label>
+          <div id="e_detailsBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px;"></div>
+        </div>
         <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>商品名タイトル候補（コピー用・AI5案）</label><textarea id="e_keywordsCopy" placeholder="AIが5案を自動生成"></textarea></div>
@@ -985,7 +989,7 @@ button[onclick="exportProductsCSV()"]{
         <div id="listingTemplateBody" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.9;white-space:pre-wrap;word-break:break-all;color:var(--text2);user-select:none;pointer-events:none;"></div>
         <div id="templateCopyMsg" style="font-size:11px;color:var(--green);margin-top:6px;display:none;">コピーしました</div>
       </div>
-      <div class="btn-row">
+      <div class="btn-row" style="position:sticky;bottom:0;z-index:8;background:var(--surface);padding:12px 0 4px;margin-top:16px;border-top:1px solid var(--border);">
         <button class="btn btn-primary" onclick="saveStage(2)">保存</button>
         <button class="btn btn-next" onclick="saveStage(2,3)">保存して出品へ →</button>
         <span class="status-msg" id="e_status2"></span>
@@ -1109,7 +1113,7 @@ let allProductsCache=[];
 let trendCache=null; // トレンド検索結果を保持
 
 // ==================== ブランド・形状マスタ ====================
-const BRAND_LIST=['ルイヴィトン','シャネル','エルメス','グッチ','プラダ','ディオール','フェンディ','セリーヌ','サンローラン','バレンシアガ','ボッテガヴェネタ','ロエベ','ジバンシィ','バーバリー','コーチ','マイケルコース','トリーバーチ','ケイトスペード','フルラ','ロンシャン','ミュウミュウ','クロエ','ヴァレンティノ','ジミーチュウ','フェラガモ','トッズ','ポールスミス','コムデギャルソン','メゾンマルジェラ','トムフォード','カルティエ','ティファニー','ブルガリ','ヴァンクリーフ&アーペル','ロレックス','オメガ','タグホイヤー','グランドセイコー','ガガミラノ','ダニエルウェリントン','レイバン','オークリー','トムブラウン','その他'];
+const BRAND_LIST=['ルイヴィトン','グッチ','コーチ','ディーゼル','ゲンテン','プラダ','シャネル','フェンディ','ポーター','イルビゾンテ','バーバリー','ダコタ','ボッテガベネタ','サロンドアルファード','クリスチャンディオール','シチズン','ヴィヴィアンウエストウッド','カシオ','ポロラルフローレン','ラシット','ベルサーチ','セリーヌ','カルティエ','セイコー','バレンシアガ','ヒステリックグラマー','ジャンニキャリーニ','トリーバーチ','コムデギャルソン','マイケルコース','オールドコーチ','ロンシャン','ミュウミュウ','マークジェイコブス','アニエスベー','ケイトスペード','アタオ','フルラ','サマンサタバサ','マークバイマークジェイコブス','ジミーチュウ','エルメス','レスポートサック','アディダス','エムシーエム','ロエベ','フェラガモ','アメリ','クロエ','ジャンニヴェルサーチ','マリメッコ','メゾンマルジェラ','ランバン','ユナイテッドアローズ','ヨウジヤマモト','アレキサンダーワン','オロビアンコ','カルバンクライン','キタムラ','ケンゾー','サンローラン','ステラマッカートニー','ティファニー','トゥミ','ナンバーナイン','バリー','バレンティノ','リーガル','アルマーニ','エトロ','オニツカタイガー','クラークス','グレゴリー','サマンサベガ','シーバイクロエ','ジャーナルスタンダード','トゥモローランド','ナイキ','ニューバランス','フェイラー','フォッシル','マッキントッシュ','マリークワント','ミステリーランチ','ラコステ','ランセル','リーバイス','レイバン','ワコール','ヨネックス','その他'];
 // 中カテゴリ → 形状候補
 const SHAPE_MAP={
   '財布':['二つ折り財布','三つ折り財布','長財布','マネークリップ','コインケース','カードケース','フラグメントケース','チェーンウォレット','キーケース','シガレットケース'],
@@ -1197,10 +1201,39 @@ const SIZE_MAP={
   'その他小物':'・縦：約cm\n・横：約cm\n・マチ：約cm'
 };
 // 財布・バッグのみ【details】（構造情報）をテンプレ内に編集可能テキストとして出力
-const STRUCT_DETAILS={
-  '財布':'開閉仕様：\n・ラウンドファスナー / L字ファスナー / フラップ（かぶせ） / スナップボタン / Wホック / がま口 / ベルト開閉 / プッシュロック式 / オープン開閉 / ダブルファスナー\n\n・札入れ×\n・小銭入れ×\n・カードポケット×',
-  'バッグ':'型：\n・ファスナー\n・フラップ\n\n[外装ポケット]\n・外ポケット×\n・背面ポケット×\n・サイドポケット×\n・その他ポケット×\n\n[内装ポケット]\n・内ポケット×\n・内側仕切りポケット×'
+// --- 財布・バッグの【details】専用入力（開閉仕様・ポケット）---
+const DETAIL_SCHEMA={
+  '財布':{openLabel:'開閉仕様',openOpts:['ラウンドファスナー','L字ファスナー','フラップ（かぶせ）','スナップボタン','Wホック','がま口','ベルト開閉','プッシュロック式','オープン開閉','ダブルファスナー'],pockets:['札入れ','小銭入れ','カードポケット']},
+  'バッグ':{openLabel:'型',openOpts:['ファスナー','フラップ'],pockets:['外ポケット','背面ポケット','サイドポケット','その他ポケット','内ポケット','内側仕切りポケット']}
 };
+function renderDetailsOptions(cat,saved){
+  const wrap=document.getElementById('e_detailsWrap');
+  const box=document.getElementById('e_detailsBox');
+  if(!wrap||!box)return;
+  const sc=DETAIL_SCHEMA[cat];
+  if(!sc){wrap.style.display='none';box.innerHTML='';return;}
+  wrap.style.display='block';
+  const sv=saved||{};
+  const openSel='<div class="field"><label>'+sc.openLabel+'</label><select id="dt_openType" onchange="updateListingTemplate()"><option value="">選択</option>'+sc.openOpts.map(o=>'<option '+(sv.openType===o?'selected':'')+'>'+o+'</option>').join('')+'</select></div>';
+  const pkInputs=sc.pockets.map(n=>'<div class="field"><label>'+n+'（数）</label><input type="number" class="dt-pk" data-name="'+n+'" min="0" value="'+((sv.pockets&&sv.pockets[n]!=null)?sv.pockets[n]:'')+'" oninput="updateListingTemplate()"></div>').join('');
+  box.innerHTML=openSel+pkInputs;
+}
+function getDetailsData(){
+  const openType=(document.getElementById('dt_openType')||{}).value||'';
+  const pockets={};
+  document.querySelectorAll('#e_detailsBox .dt-pk').forEach(el=>{pockets[el.dataset.name]=el.value;});
+  return {openType,pockets};
+}
+// 財布・バッグの【details】テンプレ文字列を組み立て（それ以外は空）
+function buildDetailsBlock(cat){
+  if(cat!=='財布'&&cat!=='バッグ')return '';
+  const d=getDetailsData();
+  const pk=n=>(d.pockets&&d.pockets[n]!=null)?d.pockets[n]:'';
+  if(cat==='財布'){
+    return '開閉仕様：'+d.openType+'\n・札入れ×'+pk('札入れ')+'\n・小銭入れ×'+pk('小銭入れ')+'\n・カードポケット×'+pk('カードポケット');
+  }
+  return '型：'+d.openType+'\n[外装ポケット]\n・外ポケット×'+pk('外ポケット')+'\n・背面ポケット×'+pk('背面ポケット')+'\n・サイドポケット×'+pk('サイドポケット')+'\n・その他ポケット×'+pk('その他ポケット')+'\n[内装ポケット]\n・内ポケット×'+pk('内ポケット')+'\n・内側仕切りポケット×'+pk('内側仕切りポケット');
+}
 function updateMaterialOptions(keepValue){
   const cat=(document.getElementById('e_subCategory')||{}).value||'';
   const sel=document.getElementById('e_material');
@@ -1439,12 +1472,12 @@ async function generateAI(){
     const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
     const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
-      +'writingTitle=情景が浮かぶキャッチコピー14文字程度（【】は不要）。\n'
-      +'bigWord/midWord/smallWord/longTailWord=メルカリ検索SEOワードを粒度が大→小になるように（bigWord:最重要の1語、midWord:中程度、smallWord:補足、longTailWord:複合ロングテール）。各1〜数語。\n'
+      +'productDescription=商品の魅力を伝える説明文のみ。状態ランク・シリアル/型番・実寸法・付属品の羅列は書かない（それらは別欄で管理）。\n'
+      +'repairDetail=メンテナンス内容は「全体的に」「気になる箇所を」等ふんわり表現で。具体的な部位を断定しない（実際と違う場所を書かないため）。\n'
+      +'titleVariants=タイトル部品を5パターン（配列）。各要素は{"writingTitle":情景キャッチ14字程度(【】不要),"bigWord":最重要SEO1語,"midWord":中程度,"smallWord":補足,"longTailWord":複合ロングテール}。5つは必ず表現・語を変えて重複させない。\n'
       +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
-      +'titleCandidates=商品名タイトルの候補を5個（配列）。各候補は「'+buildTitleFormatHint()+'」の並びで作る。\n'
-      +'JSONのみ返答：{"brandName":"","itemShape":"","writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":"","keywords":"","titleCandidates":["","","","",""],"productDescription":"","repairDetail":""}';
+      +'JSONのみ返答：{"brandName":"","itemShape":"","keywords":"","titleVariants":[{"writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":""}],"productDescription":"","repairDetail":""}';
 
     const messages=hasPhotos
       ? [{role:'user',content:[...editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
@@ -1471,11 +1504,12 @@ async function generateAI(){
     setProgress(90,'反映中...');
     if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
     if(r.itemShape) document.getElementById('e_itemShape').value=r.itemShape;
-    // 商品タイトルは固定の文字配列で組み立てる（下記 buildProductTitle）
-    document.getElementById('e_productTitle').value=buildProductTitle(r);
+    // タイトル候補5案は buildProductTitle で固定の全角/半角配列に統一して組み立てる
+    const variants=Array.isArray(r.titleVariants)&&r.titleVariants.length?r.titleVariants:[r];
+    const candidates=variants.map(v=>buildProductTitle(Object.assign({brandName:r.brandName,itemShape:r.itemShape},v))).filter(Boolean);
+    document.getElementById('e_productTitle').value=candidates[0]||'';
+    document.getElementById('e_keywordsCopy').value=candidates.join('\n');   // コピー用欄＝候補5案（1行1案・同一配列）
     document.getElementById('e_keywords').value=r.keywords||'';
-    // キーワード（コピー用）欄＝商品名タイトル候補5案（1行1案）
-    document.getElementById('e_keywordsCopy').value=Array.isArray(r.titleCandidates)?r.titleCandidates.filter(Boolean).join('\n'):(r.keywordsCopy||'');
     document.getElementById('e_productDescription').value=r.productDescription||'';
     document.getElementById('e_repairDetail').value=r.repairDetail||'';
     calcEditPrices();
@@ -1962,6 +1996,9 @@ async function saveStage(step,nextStep){
     const rPl=Number(document.getElementById('e_priceLow').value)||null;
     const rMid=(rPh&&rPl)?Math.round((rPh+rPl)/2):null;
     updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:document.getElementById('e_sizeInput').value,serial_no:document.getElementById('e_serialNo').value,model_no:document.getElementById('e_modelNo').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:(rPh&&rMid)?Math.round((rPh+rMid)/2):null,price_low_mid:(rPl&&rMid)?Math.round((rPl+rMid)/2):null};
+    // 財布・バッグの【details】（開閉仕様・ポケット）を保存
+    const dtCat=document.getElementById('e_subCategory').value;
+    updates.details_json=(dtCat==='財布'||dtCat==='バッグ')?JSON.stringify(getDetailsData()):null;
     // トレンド検索結果を保存（検索した時のみ更新）
     if(trendCache)updates.trend_data=JSON.stringify(trendCache);
     if(editListingImages.length){
@@ -2095,6 +2132,8 @@ async function openEdit(id){
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   updateMaterialOptions(data.material||'');
   set('e_conditionRank',data.condition_rank);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_sizeInput',data.size_input);set('e_serialNo',data.serial_no);set('e_modelNo',data.model_no);
+  // 財布・バッグの【details】入力を復元
+  {let dj=null;try{dj=data.details_json?((typeof data.details_json==='string')?JSON.parse(data.details_json):data.details_json):null;}catch(e){}renderDetailsOptions(normSub,dj);}
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
@@ -2144,15 +2183,17 @@ async function deleteProduct(id,no){
 
 // ==================== ダッシュボード売上グラフ ====================
 function buildDashYearOptions(data){
+  const now=new Date();
+  const curYear=String(now.getFullYear());
   const years=new Set();
   data.forEach(d=>{if(d.sold_date)years.add(d.sold_date.slice(0,4));});
-  if(!years.size)years.add(String(new Date().getFullYear()));
-  const sel=document.getElementById('dashYearSelect');const cur=sel.value;
+  years.add(curYear); // 当年は必ず選択肢に含める
+  const sel=document.getElementById('dashYearSelect');const prev=sel.value;
   sel.innerHTML='';
   [...years].sort((a,b)=>b-a).forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'年';sel.appendChild(o);});
-  if(cur&&[...years].includes(cur))sel.value=cur;
-  // 日割り対象月は当月をデフォルト
-  if(!document.getElementById('dashMonthSelect').value)document.getElementById('dashMonthSelect').value=String(new Date().getMonth()+1).padStart(2,'0');
+  // 年は前回選択を維持、無ければ当年。日割りは常に当月をデフォルト表示
+  sel.value=(prev&&[...years].includes(prev))?prev:curYear;
+  document.getElementById('dashMonthSelect').value=String(now.getMonth()+1).padStart(2,'0');
 }
 function drawDashMonthlyChart(){
   const yr=document.getElementById('dashYearSelect').value;if(!yr)return;
@@ -2253,13 +2294,14 @@ function buildSheetTable(data){
 // ==================== 出品テンプレート ====================
 // ==================== 出品テンプレート（全カテゴリ汎用・PDF反映）====================
 function buildListingTemplate(d){
-  const details=[d.structDetails,(d.repairDetail?('・'+d.repairDetail):'')].filter(Boolean).join('\n');
+  // 財布・バッグのみ 【details】（開閉仕様・ポケット）をサイズ直下に表示
+  const detailsSection=d.structDetails?('\n【 details 】\n'+d.structDetails+'\n━━━━━━━━━━━━━━━━━━━'):'';
   return `【 description 】
 ・${d.description||''}
 ━━━━━━━━━━━━━━━━━━━
 【 size 】
 ${d.size||''}
-━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━${detailsSection}
 【 color 】
 ${d.color?('・'+d.color):''}
 ━━━━━━━━━━━━━━━━━━━
@@ -2278,8 +2320,8 @@ ${d.condition||''}
 【 maintenance 】
 ${d.maintenance||''}
 ━━━━━━━━━━━━━━━━━━━
-【 details 】
-${details}
+【 Condition Details 】
+${d.repairDetail?('・'+d.repairDetail):''}
 ━━━━━━━━━━━━━━━━━━━
 ・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
 "もう一度、美しく使える"品質を大切に、
@@ -2316,7 +2358,7 @@ function getTemplateData(){
     modelNo: v('e_modelNo'),
     accessories: acc.length ? acc.map(x=>'・'+x).join('\n') : '',
     size: sizeBlock,
-    structDetails: STRUCT_DETAILS[cat]||'',
+    structDetails: buildDetailsBlock(cat),
     condition: condMap[v('e_conditionRank')]||'',
     itemNo: editingId&&currentEditData ? String(currentEditData.product_no||'').padStart(4,'0') : ''
   };
@@ -2495,7 +2537,11 @@ async function loadSales(){
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
-  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上 <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">（各商品の売上金額の合計）</span></p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>純利益 <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">（売上×(1−手数料)−仕入れ の合計）</span></p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div>`;
+  // 売掛金：発送前・受取評価前の商品の（売上×(1−手数料)−送料）合計
+  const receivableItems=data.filter(d=>['発送前','受取評価前'].includes(d.status));
+  const receivable=receivableItems.reduce((s,d)=>{const rev=d.revenue||0;if(!rev)return s;const fee=(FEE_MAP[d.sold_platform]!==undefined?FEE_MAP[d.sold_platform]:10)/100;const ship=d.shipping_cost||0;return s+Math.floor(rev*(1-fee)-ship);},0);
+  const rcSpan='<span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">';
+  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上 ${rcSpan}（各商品の売上金額の合計）</span></p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>純利益 ${rcSpan}（売上×(1−手数料)−仕入れ の合計）</span></p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div><div class="stat"><p>売掛金 ${rcSpan}（発送前・受取評価前／売上×(1−手数料)−送料）</span></p><h3>¥${receivable.toLocaleString()}</h3></div>`;
   buildSheetTable(data);
   salesListCache=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date));renderSalesTable(salesListCache);
 }
