@@ -2178,7 +2178,11 @@ async function viewProduct(id){
 // ==================== 削除 ====================
 async function deleteProduct(id,no){
   if(!confirm(`No.${no} を削除しますか？`))return;
-  await sb.from('products').delete().eq('id',id);loadProducts();
+  // 削除できたか確認するため .select() で削除済み行を受け取る
+  const {data,error}=await sb.from('products').delete().eq('id',id).select();
+  if(error){alert('削除に失敗しました: '+error.message+'\n（DB側のRLSでDELETEが許可されていない可能性があります）');return;}
+  if(!data||data.length===0){alert('削除できませんでした（対象0件）。\nSupabaseのRLSでDELETEポリシーが無い可能性が高いです。');return;}
+  loadProducts();
 }
 
 // ==================== ダッシュボード売上グラフ ====================
