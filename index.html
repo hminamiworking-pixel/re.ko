@@ -195,6 +195,8 @@ tr:hover td{background:var(--surface2);}
 .photo-wrap{position:relative;display:inline-block;}
 .photo-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#c42b2b;color:#fff;border:none;cursor:pointer;font-size:11px;line-height:18px;text-align:center;padding:0;z-index:1;display:flex;align-items:center;justify-content:center;}
 .photo-del:hover{background:#a01f1f;}
+.photo-move{position:absolute;bottom:-6px;width:18px;height:18px;border-radius:50%;background:#3d3d3b;color:#fff;border:none;cursor:pointer;font-size:9px;line-height:18px;text-align:center;padding:0;z-index:1;display:flex;align-items:center;justify-content:center;}
+.photo-move:hover{background:#174f3e;}
 .thumb-empty{width:44px;height:44px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);}
 /* ===== IMAGE LIGHTBOX ===== */
 .img-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;align-items:center;justify-content:center;padding:24px;}
@@ -651,6 +653,14 @@ button[onclick="exportProductsCSV()"]{
         <option value="">ステータス：全て</option>
         <option>仕分け前</option><option>検品</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
       </select>
+      <select id="p_dateType" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
+        <option value="created_at">仕入れ日</option>
+        <option value="listing_date">出品日</option>
+        <option value="sold_date">売却日</option>
+      </select>
+      <input type="date" id="p_dateFrom" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;color-scheme:light;">
+      <span style="font-size:11px;color:var(--text3);">〜</span>
+      <input type="date" id="p_dateTo" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;color-scheme:light;">
       <button onclick="clearProductsFilter()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface2);color:var(--text2);cursor:pointer;">クリア</button>
       <span id="p_count" style="font-size:11px;color:var(--text3);"></span>
       <button onclick="exportProductsCSV()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--teal);cursor:pointer;font-weight:600;margin-left:auto;">CSVエクスポート</button>
@@ -838,7 +848,7 @@ button[onclick="exportProductsCSV()"]{
       </div>
       <div class="grid">
         <div class="field"><label>大カテゴリー</label><select id="e_mainCategory"><option value="">選択</option><option>メンズ</option><option>レディース</option><option>ユニセックス</option></select></div>
-        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateMaterialOptions();renderAccessoryOptions(this.value);renderRepairOptions(this.value);renderDetailsOptions(this.value);updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
+        <div class="field"><label>中カテゴリー</label><select id="e_subCategory" onchange="updateShapeOptions('e_subCategory','e_itemShape');updateMaterialOptions();renderAccessoryOptions(this.value);renderRepairOptions(this.value);renderDetailsOptions(this.value);renderSizeOptions(this.value);updateListingTemplate()"><option value="">選択</option><option>財布</option><option>バッグ</option><option>サングラス/メガネ</option><option>ベルト</option><option>腕時計</option><option>ネックレス</option><option>ピアス/イヤリング</option><option>ブレスレット/バングル</option><option>リング</option><option>チャーム/キーホルダー</option><option>ネクタイ</option><option>帽子</option><option>靴</option><option>アパレル</option><option>ファッション小物</option><option>その他アクセサリー</option><option>その他小物</option></select></div>
         <div class="field"><label>仕入れ価格</label><input type="number" id="e_purchasePrice"></div>
         <div class="field"><label>入庫時商品状態</label><select id="e_itemCondition"><option value="">選択</option><option>未使用</option><option>未使用に近い</option><option>目立った傷や汚れなし</option><option>やや傷や汚れあり</option><option>傷や汚れあり</option><option>全体的に状態が悪い</option></select></div>
         <div class="field"><label>仕入れ先</label>
@@ -968,7 +978,10 @@ button[onclick="exportProductsCSV()"]{
         <div class="field"><label>中央値</label><input type="number" id="e_priceMid" readonly></div>
         <div class="field"><label>上振れ中央値</label><input type="number" id="e_priceHighMid" readonly></div>
         <div class="field"><label>下振れ中央値</label><input type="number" id="e_priceLowMid" readonly></div>
-        <div class="field full"><label>サイズ（size・財布用フリー入力）</label><input type="text" id="e_sizeInput" placeholder="例：縦9cm 横11cm マチ2cm" oninput="updateListingTemplate()"></div>
+        <div class="field full" id="e_sizeWrap" style="display:none;grid-column:1/-1;">
+          <label>サイズ（size・各項目に数字を入力→テンプレに反映）</label>
+          <div id="e_sizeBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px;"></div>
+        </div>
         <div class="field full" id="e_detailsWrap" style="display:none;grid-column:1/-1;border-top:1px dashed var(--border2);margin-top:6px;padding-top:12px;">
           <label style="color:var(--teal);font-weight:600;">details（財布・バッグのみ／開閉仕様・ポケット・テンプレに反映）</label>
           <div id="e_detailsBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px;"></div>
@@ -1181,30 +1194,75 @@ const REPAIR_MAP={
 function repairList(cat){return REPAIR_MAP[cat]||REP_LEATHER;}
 
 // --- サイズ（出品テンプレの【size】に入るひな形）---
-const SIZE_MAP={
-  '財布':'・縦：約cm\n・横：約cm\n・マチ：約cm',
-  'バッグ':'・高さ：約cm\n・横：約cm\n・マチ：約cm\n・手提げ立ち上がり：約cm\n・ショルダー立ち上がり：約cm',
-  'サングラス/メガネ':'メーカーサイズ表記（テンプル内側刻印）：\n・レンズ幅：約cm\n・ブリッジ幅：約cm\n・テンプル長：約cm\n・フレーム幅：約cm\n・レンズ縦幅：約cm',
-  'ベルト':'・全長：約cm\n・幅：約cm\n・一番短い位置からのウエスト長さ：約cm\n・一番長い位置からのウエスト長さ：約cm',
-  '腕時計':'・ケース：約×cm\n・文字盤：約×cm\n・バンド幅：約cm\n・手首周り：約cm',
-  'ネックレス':'・長さ：約cm\n\nトップ\n・縦：約cm\n・横：約cm',
-  'ピアス/イヤリング':'・縦：約cm\n・横：約cm\n・厚み：約cm',
-  'ブレスレット/バングル':'・腕周り：約cm\n・幅：約cm',
-  'リング':'・号数：約号',
-  'チャーム/キーホルダー':'・縦：約cm\n・横：約cm\n・厚み：約cm',
-  'ネクタイ':'・全長：約cm\n・剣幅：約cm',
-  '帽子':'・頭周り：約cm\n・高さ：約cm\n・つば幅：約cm',
-  '靴':'・サイズ表記：約cm\n・アウトソール全長：約cm\n・ソール幅：約cm\n・ヒール高さ：約cm',
-  'アパレル':'・肩幅：約cm\n・身幅：約cm\n・袖丈：約cm\n・着丈：約cm\n・ウエスト：約cm\n・ヒップ：約cm\n・股下：約cm\n・総丈：約cm',
-  'ファッション小物':'・縦：約cm\n・横：約cm\n・厚み：約cm',
-  'その他アクセサリー':'・縦：約cm\n・横：約cm\n・厚み：約cm',
-  'その他小物':'・縦：約cm\n・横：約cm\n・マチ：約cm'
+// --- サイズ（カテゴリ別の個別入力フィールド。値はテンプレの【size】へ反映）---
+// u:'cm'(既定)/'号'/'text'  g:グループ見出し
+const SIZE_FIELDS={
+  '財布':[{l:'縦'},{l:'横'},{l:'マチ'}],
+  'バッグ':[{l:'高さ'},{l:'横'},{l:'マチ'},{l:'手提げ立ち上がり'},{l:'ショルダー立ち上がり'}],
+  'サングラス/メガネ':[{l:'メーカーサイズ表記（テンプル内側刻印）',u:'text'},{l:'レンズ幅'},{l:'ブリッジ幅'},{l:'テンプル長'},{l:'フレーム幅'},{l:'レンズ縦幅'}],
+  'ベルト':[{l:'全長'},{l:'幅'},{l:'一番短い位置からのウエスト長さ'},{l:'一番長い位置からのウエスト長さ'}],
+  '腕時計':[{l:'ケース'},{l:'文字盤'},{l:'バンド幅'},{l:'手首周り'}],
+  'ネックレス':[{l:'長さ'},{l:'縦',g:'トップ'},{l:'横',g:'トップ'}],
+  'ピアス/イヤリング':[{l:'縦'},{l:'横'},{l:'厚み'}],
+  'ブレスレット/バングル':[{l:'腕周り'},{l:'幅'}],
+  'リング':[{l:'号数',u:'号'}],
+  'チャーム/キーホルダー':[{l:'縦'},{l:'横'},{l:'厚み'}],
+  'ネクタイ':[{l:'全長'},{l:'剣幅'}],
+  '帽子':[{l:'頭周り'},{l:'高さ'},{l:'つば幅'}],
+  '靴':[{l:'サイズ表記'},{l:'アウトソール全長'},{l:'ソール幅'},{l:'ヒール高さ'}],
+  'アパレル':[{l:'肩幅'},{l:'身幅'},{l:'袖丈'},{l:'着丈'},{l:'ウエスト'},{l:'ヒップ'},{l:'股下'},{l:'総丈'}],
+  'ファッション小物':[{l:'縦'},{l:'横'},{l:'厚み'}],
+  'その他アクセサリー':[{l:'縦'},{l:'横'},{l:'厚み'}],
+  'その他小物':[{l:'縦'},{l:'横'},{l:'マチ'}]
 };
+function renderSizeOptions(cat,saved){
+  const wrap=document.getElementById('e_sizeWrap');
+  const box=document.getElementById('e_sizeBox');
+  if(!wrap||!box)return;
+  const fields=SIZE_FIELDS[cat];
+  if(!fields){wrap.style.display='none';box.innerHTML='';return;}
+  const sv=saved!==undefined?saved:getSizeData();
+  wrap.style.display='block';
+  box.innerHTML=fields.map(f=>{
+    const u=f.u===undefined?'cm':f.u;
+    const key=(f.g?f.g+'_':'')+f.l;
+    const val=(sv&&sv[key]!=null)?sv[key]:'';
+    const unit=u==='text'?'':('（'+u+'）');
+    return '<div class="field"><label>'+(f.g?f.g+'・':'')+f.l+unit+'</label><input type="text" class="sz-in" data-label="'+key+'" value="'+String(val).replace(/"/g,'&quot;')+'" oninput="updateListingTemplate()"></div>';
+  }).join('');
+}
+function getSizeData(){
+  const o={};
+  document.querySelectorAll('#e_sizeBox .sz-in').forEach(el=>{o[el.dataset.label]=el.value.trim();});
+  return o;
+}
+function buildSizeBlock(cat){
+  const fields=SIZE_FIELDS[cat];
+  if(!fields)return '';
+  const sv=getSizeData();
+  const lines=[];let lastGroup=null;
+  fields.forEach(f=>{
+    const u=f.u===undefined?'cm':f.u;
+    const key=(f.g?f.g+'_':'')+f.l;
+    const v=sv[key]||'';
+    if(f.g&&f.g!==lastGroup){lines.push('');lines.push(f.g);lastGroup=f.g;}
+    if(u==='text')lines.push(f.l+'：'+v);
+    else lines.push('・'+f.l+'：約'+v+u);
+  });
+  return lines.join('\n');
+}
+// タイトル用サイズ（靴のサイズ表記・リングの号数のみ）
+function getTitleSize(){
+  const d=getSizeData();
+  if(d['サイズ表記'])return d['サイズ表記']+'cm';
+  if(d['号数'])return d['号数']+'号';
+  return '';
+}
 // 財布・バッグのみ【details】（構造情報）をテンプレ内に編集可能テキストとして出力
 // --- 財布・バッグの【details】専用入力（開閉仕様・ポケット）---
 const DETAIL_SCHEMA={
   '財布':{openLabel:'開閉仕様',openOpts:['ラウンドファスナー','L字ファスナー','フラップ（かぶせ）','スナップボタン','Wホック','がま口','ベルト開閉','プッシュロック式','オープン開閉','ダブルファスナー'],pockets:['札入れ','小銭入れ','カードポケット']},
-  'バッグ':{openLabel:'型',openOpts:['ファスナー','フラップ'],pockets:['外ポケット','背面ポケット','サイドポケット','その他ポケット','内ポケット','内側仕切りポケット']}
+  'バッグ':{openLabel:null,openOpts:[],pockets:['外ポケット','内ポケット']}
 };
 function renderDetailsOptions(cat,saved){
   const wrap=document.getElementById('e_detailsWrap');
@@ -1214,7 +1272,7 @@ function renderDetailsOptions(cat,saved){
   if(!sc){wrap.style.display='none';box.innerHTML='';return;}
   wrap.style.display='block';
   const sv=saved||{};
-  const openSel='<div class="field"><label>'+sc.openLabel+'</label><select id="dt_openType" onchange="updateListingTemplate()"><option value="">選択</option>'+sc.openOpts.map(o=>'<option '+(sv.openType===o?'selected':'')+'>'+o+'</option>').join('')+'</select></div>';
+  const openSel=(sc.openOpts&&sc.openOpts.length)?('<div class="field"><label>'+sc.openLabel+'</label><select id="dt_openType" onchange="updateListingTemplate()"><option value="">選択</option>'+sc.openOpts.map(o=>'<option '+(sv.openType===o?'selected':'')+'>'+o+'</option>').join('')+'</select></div>'):'';
   const pkInputs=sc.pockets.map(n=>'<div class="field"><label>'+n+'（数）</label><input type="number" class="dt-pk" data-name="'+n+'" min="0" value="'+((sv.pockets&&sv.pockets[n]!=null)?sv.pockets[n]:'')+'" oninput="updateListingTemplate()"></div>').join('');
   box.innerHTML=openSel+pkInputs;
 }
@@ -1232,7 +1290,7 @@ function buildDetailsBlock(cat){
   if(cat==='財布'){
     return '開閉仕様：'+d.openType+'\n・札入れ×'+pk('札入れ')+'\n・小銭入れ×'+pk('小銭入れ')+'\n・カードポケット×'+pk('カードポケット');
   }
-  return '型：'+d.openType+'\n[外装ポケット]\n・外ポケット×'+pk('外ポケット')+'\n・背面ポケット×'+pk('背面ポケット')+'\n・サイドポケット×'+pk('サイドポケット')+'\n・その他ポケット×'+pk('その他ポケット')+'\n[内装ポケット]\n・内ポケット×'+pk('内ポケット')+'\n・内側仕切りポケット×'+pk('内側仕切りポケット');
+  return '・外ポケット×'+pk('外ポケット')+'\n・内ポケット×'+pk('内ポケット');
 }
 function updateMaterialOptions(keepValue){
   const cat=(document.getElementById('e_subCategory')||{}).value||'';
@@ -1426,22 +1484,26 @@ async function fetchTrend(){
 // ==================== 商品タイトルの固定文字配列を組み立て ====================
 // 形式：【ライティングタイトル】〈全〉ブランド名〈全〉形状〈半〉ビッグ〈半〉ミドル〈半〉スモール〈半〉ロングテール〈全〉カラー〈半〉サイズ
 //   〈全〉=全角スペース(　) / 〈半〉=半角スペース( )。空の要素はその区切りごとスキップする。
+// AI出力の掃除：前後の空白と、AIが勝手に付けるかぎかっこ・角かっこを除去
+function cleanAI(v){
+  return String(v||'').trim().replace(/^[\s【「『\[]+/,'').replace(/[\s】」』\]]+$/,'').replace(/\s+/g,' ');
+}
 function buildProductTitle(r){
   const FS='　',HS=' ';
   const g=id=>(document.getElementById(id)||{}).value||'';
-  const wt=(r.writingTitle||'').trim();
-  const brand=(r.brandName||g('e_brandName')).trim();
-  const shape=(r.itemShape||g('e_itemShape')).trim();
+  const wt=cleanAI(r.writingTitle);
+  const brand=cleanAI(r.brandName||g('e_brandName'));
+  const shape=cleanAI(r.itemShape||g('e_itemShape'));
   const color=g('e_color').trim();
-  const size=g('e_sizeInput').trim();
+  const size=getTitleSize();
   const segs=[
     [wt?('【'+wt+'】'):'', ''],
     [brand,FS],
     [shape,FS],
-    [(r.bigWord||'').trim(),HS],
-    [(r.midWord||'').trim(),HS],
-    [(r.smallWord||'').trim(),HS],
-    [(r.longTailWord||'').trim(),HS],
+    [cleanAI(r.bigWord),HS],
+    [cleanAI(r.midWord),HS],
+    [cleanAI(r.smallWord),HS],
+    [cleanAI(r.longTailWord),HS],
     [color,FS],
     [size,HS]
   ];
@@ -1472,8 +1534,8 @@ async function generateAI(){
     const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
     const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
-      +'productDescription=商品の魅力を伝える説明文のみ。状態ランク・シリアル/型番・実寸法・付属品の羅列は書かない（それらは別欄で管理）。\n'
-      +'repairDetail=メンテナンス内容は「全体的に」「気になる箇所を」等ふんわり表現で。具体的な部位を断定しない（実際と違う場所を書かないため）。\n'
+      +'productDescription=商品の魅力を伝える説明文のみ。状態ランク・シリアル/型番・実寸法・付属品・リペア項目の羅列や転記は書かない（それらは別欄で管理）。リペア情報が多くても文章に列挙せず、雰囲気だけ1文で触れる程度に。\n'
+      +'repairDetail=リペア項目が多くても要約し、「全体的に丁寧にメンテナンスを行いました」等のあいまい表現1〜2文のみ。部位名・作業名を列挙、断定しない（実際と違う場所を書かないため）。\n'
       +'titleVariants=タイトル部品を5パターン（配列）。各要素は{"writingTitle":情景キャッチ14字程度(【】不要),"bigWord":最重要SEO1語,"midWord":中程度,"smallWord":補足,"longTailWord":複合ロングテール}。5つは必ず表現・語を変えて重複させない。\n'
       +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
@@ -1800,13 +1862,35 @@ function calcEstProfit(){
 }
 
 // ==================== 写真処理 ====================
+// 移動ボタン生成（画像並べ替え用）
+function makeMoveBtn(txt,side,fn){
+  const b=document.createElement('button');
+  b.className='photo-move';b.textContent=txt;b.type='button';
+  b.style[side]='-6px';b.onclick=fn;
+  return b;
+}
+// 新規登録の写真プレビュー（追加式・削除・並べ替え対応）
+function renderRegisterPreviews(){
+  const box=document.getElementById('r_previews');box.innerHTML='';
+  registerImages.forEach((url,i)=>{
+    const wrap=document.createElement('div');wrap.className='photo-wrap';
+    const img=document.createElement('img');img.src=url;img.className='preview-img';img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(url);
+    const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.type='button';
+    del.onclick=()=>{registerImages.splice(i,1);renderRegisterPreviews();};
+    wrap.appendChild(img);wrap.appendChild(del);
+    if(i>0)wrap.appendChild(makeMoveBtn('◀','left',()=>{[registerImages[i-1],registerImages[i]]=[registerImages[i],registerImages[i-1]];renderRegisterPreviews();}));
+    if(i<registerImages.length-1)wrap.appendChild(makeMoveBtn('▶','right',()=>{[registerImages[i+1],registerImages[i]]=[registerImages[i],registerImages[i+1]];renderRegisterPreviews();}));
+    box.appendChild(wrap);
+  });
+}
 function handleRegisterPhotos(e){
-  registerImages=[];document.getElementById('r_previews').innerHTML='';
+  // 2回目以降の選択は既存に追加（リセットしない）
   Array.from(e.target.files).forEach(file=>{
     const reader=new FileReader();
-    reader.onload=ev=>{registerImages.push(ev.target.result);const img=document.createElement('img');img.src=ev.target.result;img.className='preview-img';document.getElementById('r_previews').appendChild(img);};
+    reader.onload=ev=>{registerImages.push(ev.target.result);renderRegisterPreviews();};
     reader.readAsDataURL(file);
   });
+  e.target.value='';
 }
 
 function handleEditPhotos(e,type){
@@ -1903,19 +1987,9 @@ async function deletePhoto(type, index, productId){
   // 配列から削除してDB更新
   const newUrls = urls.filter((_,i)=>i!==index);
   await sb.from('products').update({[col]: newUrls.length ? newUrls : null}).eq('id', productId);
-  // currentEditDataも更新して再描画
+  // currentEditDataも更新して再描画（移動ボタン付き）
   currentEditData[col] = newUrls;
-  // ギャラリー再描画
-  const galleryId = type==='purchase' ? 'e_purchasePhotos' : 'e_listingPhotos';
-  const gallery = document.getElementById(galleryId);
-  gallery.innerHTML = '';
-  newUrls.forEach((u,i)=>{
-    const wrap=document.createElement('div');wrap.className='photo-wrap';
-    const img=document.createElement('img');img.src=u;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(u);
-    const del=document.createElement('button');del.className='photo-del';del.textContent='×';
-    del.onclick=()=>deletePhoto(type,i,productId);
-    wrap.appendChild(img);wrap.appendChild(del);gallery.appendChild(wrap);
-  });
+  redrawEditGallery(type,newUrls);
 }
 
 // ==================== 全件取得（1000行制限対策） ====================
@@ -1995,7 +2069,7 @@ async function saveStage(step,nextStep){
     const rPh=Number(document.getElementById('e_priceHigh').value)||null;
     const rPl=Number(document.getElementById('e_priceLow').value)||null;
     const rMid=(rPh&&rPl)?Math.round((rPh+rPl)/2):null;
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:document.getElementById('e_sizeInput').value,serial_no:document.getElementById('e_serialNo').value,model_no:document.getElementById('e_modelNo').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:(rPh&&rMid)?Math.round((rPh+rMid)/2):null,price_low_mid:(rPl&&rMid)?Math.round((rPl+rMid)/2):null};
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:JSON.stringify(getSizeData()),serial_no:document.getElementById('e_serialNo').value,model_no:document.getElementById('e_modelNo').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:(rPh&&rMid)?Math.round((rPh+rMid)/2):null,price_low_mid:(rPl&&rMid)?Math.round((rPl+rMid)/2):null};
     // 財布・バッグの【details】（開閉仕様・ポケット）を保存
     const dtCat=document.getElementById('e_subCategory').value;
     updates.details_json=(dtCat==='財布'||dtCat==='バッグ')?JSON.stringify(getDetailsData()):null;
@@ -2061,13 +2135,29 @@ function redrawEditGallery(type,urls){
   const gallery=document.getElementById(galleryId);
   if(!gallery)return;
   gallery.innerHTML='';
-  (urls||[]).forEach((u,i)=>{
+  const list=urls||[];
+  list.forEach((u,i)=>{
     const wrap=document.createElement('div');wrap.className='photo-wrap';
     const img=document.createElement('img');img.src=u;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(u);
-    const del=document.createElement('button');del.className='photo-del';del.textContent='×';
+    const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.type='button';
     del.onclick=()=>deletePhoto(type,i,editingId);
-    wrap.appendChild(img);wrap.appendChild(del);gallery.appendChild(wrap);
+    wrap.appendChild(img);wrap.appendChild(del);
+    if(i>0)wrap.appendChild(makeMoveBtn('◀','left',()=>movePhoto(type,i,-1)));
+    if(i<list.length-1)wrap.appendChild(makeMoveBtn('▶','right',()=>movePhoto(type,i,1)));
+    gallery.appendChild(wrap);
   });
+}
+// 保存済み写真の並べ替え（DBに即保存。1枚目が一覧のサムネイルになる）
+async function movePhoto(type,index,dir){
+  const col=type==='purchase'?'photo_urls':'listing_photo_urls';
+  const urls=(currentEditData&&Array.isArray(currentEditData[col]))?[...currentEditData[col]]:[];
+  const j=index+dir;
+  if(j<0||j>=urls.length)return;
+  [urls[index],urls[j]]=[urls[j],urls[index]];
+  const {error}=await sb.from('products').update({[col]:urls}).eq('id',editingId);
+  if(error){alert('並べ替えの保存に失敗しました: '+error.message);return;}
+  currentEditData[col]=urls;
+  redrawEditGallery(type,urls);
 }
 
 // ==================== 送料計算 ====================
@@ -2118,10 +2208,8 @@ async function openEdit(id){
   // 保存済みトレンド結果があれば復元表示
   if(data.trend_data){try{const t=(typeof data.trend_data==='string')?JSON.parse(data.trend_data):data.trend_data;trendCache=t;renderTrendResult(t);}catch(e){console.error('trend restore失敗',e);}}
 
-  const pg=document.getElementById('e_purchasePhotos');pg.innerHTML='';
-  if(data.photo_urls&&Array.isArray(data.photo_urls)){data.photo_urls.forEach((url,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=url;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(url);const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.onclick=()=>deletePhoto('purchase',i,data.id);wrap.appendChild(img);wrap.appendChild(del);pg.appendChild(wrap);});}
-  const lg=document.getElementById('e_listingPhotos');lg.innerHTML='';
-  if(data.listing_photo_urls&&Array.isArray(data.listing_photo_urls)){data.listing_photo_urls.forEach((url,i)=>{const wrap=document.createElement('div');wrap.className='photo-wrap';const img=document.createElement('img');img.src=url;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(url);const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.onclick=()=>deletePhoto('listing',i,data.id);wrap.appendChild(img);wrap.appendChild(del);lg.appendChild(wrap);});}
+  redrawEditGallery('purchase',Array.isArray(data.photo_urls)?data.photo_urls:[]);
+  redrawEditGallery('listing',Array.isArray(data.listing_photo_urls)?data.listing_photo_urls:[]);
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   set('e_mainCategory',data.main_category);
@@ -2131,9 +2219,11 @@ async function openEdit(id){
   set('e_subCategory',normSub);
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   updateMaterialOptions(data.material||'');
-  set('e_conditionRank',data.condition_rank);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_sizeInput',data.size_input);set('e_serialNo',data.serial_no);set('e_modelNo',data.model_no);
+  set('e_conditionRank',data.condition_rank);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_serialNo',data.serial_no);set('e_modelNo',data.model_no);
   // 財布・バッグの【details】入力を復元
   {let dj=null;try{dj=data.details_json?((typeof data.details_json==='string')?JSON.parse(data.details_json):data.details_json):null;}catch(e){}renderDetailsOptions(normSub,dj);}
+  // サイズ個別入力を復元（旧フリーテキストデータはJSONでないため空扱い）
+  {let sz={};try{if(data.size_input&&data.size_input.trim().startsWith('{'))sz=JSON.parse(data.size_input);}catch(e){}renderSizeOptions(normSub,sz);}
   set('e_purchasePrice',data.purchase_price);set('e_itemCondition',data.item_condition);
   set('e_purchaseSource',data.purchase_source);set('e_listingAccount',data.listing_account);
   set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
@@ -2298,50 +2388,24 @@ function buildSheetTable(data){
 // ==================== 出品テンプレート ====================
 // ==================== 出品テンプレート（全カテゴリ汎用・PDF反映）====================
 function buildListingTemplate(d){
-  // 財布・バッグのみ 【details】（開閉仕様・ポケット）をサイズ直下に表示
-  const detailsSection=d.structDetails?('\n【 details 】\n'+d.structDetails+'\n━━━━━━━━━━━━━━━━━━━'):'';
-  return `【 description 】
-・${d.description||''}
-━━━━━━━━━━━━━━━━━━━
-【 size 】
-${d.size||''}
-━━━━━━━━━━━━━━━━━━━${detailsSection}
-【 color 】
-${d.color?('・'+d.color):''}
-━━━━━━━━━━━━━━━━━━━
-【 material 】
-${d.material?('・'+d.material):''}
-━━━━━━━━━━━━━━━━━━━
-【 serial / model no. 】
-・${d.serialNo||''} / ${d.modelNo||''}
-━━━━━━━━━━━━━━━━━━━
-【 accessories 】
-${d.accessories||''}
-━━━━━━━━━━━━━━━━━━━
-【 condition 】
-${d.condition||''}
-━━━━━━━━━━━━━━━━━━━
-【 maintenance 】
-${d.maintenance||''}
-━━━━━━━━━━━━━━━━━━━
-【 Condition Details 】
-${d.repairDetail?('・'+d.repairDetail):''}
-━━━━━━━━━━━━━━━━━━━
-・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。
-"もう一度、美しく使える"品質を大切に、
-ブランド本来の魅力を活かしながら整えております。
-仕上がりは実物画像をご確認ください。
-━━━━━━━━━━━━━━━━━━━
-【 source 】
-・業者オークション / 国内リユースショップ
-━━━━━━━━━━━━━━━━━━━
-【 notice 】
-※中古品の特性をご理解のうえご購入ください。
-気になる点がございましたら、お気軽にコメントください！
-━━━━━━━━━━━━━━━━━━━
-【 item no. 】
-・${d.itemNo||''}
-━━━━━━━━━━━━━━━━━━━`;
+  // 各セクションの上下に空行1つを入れて区切り線で結合
+  const SEP='━━━━━━━━━━━━━━━━━━━';
+  const secs=[];
+  secs.push('【 description 】\n・'+(d.description||''));
+  secs.push('【 size 】\n'+(d.size||''));
+  if(d.structDetails)secs.push('【 details 】\n'+d.structDetails);
+  secs.push('【 color 】\n'+(d.color?('・'+d.color):''));
+  secs.push('【 material 】\n'+(d.material?('・'+d.material):''));
+  secs.push('【 serial / model no. 】\n・'+(d.serialNo||'')+' / '+(d.modelNo||''));
+  secs.push('【 accessories 】\n'+(d.accessories||''));
+  secs.push('【 condition 】\n'+(d.condition||''));
+  secs.push('【 maintenance 】\n'+(d.maintenance||''));
+  secs.push('【 Condition Details 】\n'+(d.repairDetail?('・'+d.repairDetail):''));
+  secs.push('・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。\n"もう一度、美しく使える"品質を大切に、\nブランド本来の魅力を活かしながら整えております。\n仕上がりは実物画像をご確認ください。');
+  secs.push('【 source 】\n・業者オークション / 国内リユースショップ');
+  secs.push('【 notice 】\n※中古品の特性をご理解のうえご購入ください。\n気になる点がございましたら、お気軽にコメントください！');
+  secs.push('【 item no. 】\n・'+(d.itemNo||''));
+  return secs.join('\n\n'+SEP+'\n\n')+'\n\n'+SEP;
 }
 
 function getTemplateData(){
@@ -2351,7 +2415,7 @@ function getTemplateData(){
   const v=id=>(document.getElementById(id)||{}).value||'';
   const condMap={'SA':'SA：【使用感が非常に少なく綺麗】','A':'A：【使用感はあるが綺麗】','AB':'AB：【使用感はあるが比較的良好】','B':'B：【ダメージ・使用感あり】'};
   // サイズ：フリー入力があれば優先、無ければカテゴリ別ひな形
-  const sizeBlock=v('e_sizeInput').trim() || SIZE_MAP[cat] || '';
+  const sizeBlock=buildSizeBlock(cat);
   return {
     description: v('e_productDescription'),
     maintenance: checked.length ? checked.map(x=>'・'+x).join('\n') : '',
@@ -2395,7 +2459,7 @@ function copyTemplate(){
 
 // 各入力フィールドの変更をテンプレートに反映
 function setupTemplateListeners(){
-  const fields=['e_productDescription','e_repairDetail','e_sizeInput'];
+  const fields=['e_productDescription','e_repairDetail'];
   fields.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('input',updateListingTemplate);
@@ -2448,31 +2512,43 @@ function closeImageViewer(e){
   if(e&&e.target&&e.target.id==='imgLightboxImg')return;
   document.getElementById('imgLightbox').classList.remove('open');
 }
-function applyProductsFilter(){
+// 商品一覧の現在のフィルタ条件で絞り込む（一覧・CSVで共用）
+function filterProducts(list){
   const no=(document.getElementById('p_no').value||'').trim();
   const brand=(document.getElementById('p_brand').value||'').trim().toLowerCase();
   const shape=(document.getElementById('p_shape').value||'').trim().toLowerCase();
   const shelf=(document.getElementById('p_shelf').value||'').trim().toLowerCase();
   const status=document.getElementById('p_status').value;
-  const filtered=productsListCache.filter(d=>{
+  const dateType=document.getElementById('p_dateType').value; // created_at|listing_date|sold_date
+  const df=document.getElementById('p_dateFrom').value;
+  const dt=document.getElementById('p_dateTo').value;
+  return list.filter(d=>{
     if(no&&!String(d.product_no||'').includes(no))return false;
     if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
     if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
     if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
     if(status&&d.status!==status)return false;
+    if(df||dt){
+      const raw=(d[dateType]||'').slice(0,10);
+      if(!raw)return false;
+      if(df&&raw<df)return false;
+      if(dt&&raw>dt)return false;
+    }
     return true;
   });
-  renderProductsTable(filtered);
+}
+function applyProductsFilter(){
+  renderProductsTable(filterProducts(productsListCache));
 }
 function clearProductsFilter(){
-  ['p_no','p_brand','p_shape','p_shelf'].forEach(id=>document.getElementById(id).value='');
+  ['p_no','p_brand','p_shape','p_shelf','p_dateFrom','p_dateTo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('p_status').value='';
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls','product_no',false);if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date','product_no',false);if(!data)return;
   productsListCache=data;
-  renderProductsTable(data);
+  applyProductsFilter();
 }
 
 // ==================== CSVエクスポート ====================
@@ -2481,20 +2557,8 @@ async function exportProductsCSV(){
   // 一覧キャッシュはCSVに必要な列を持っていないため、エクスポート時に全列を取得し直す
   const data=await fetchAllRows(cols.map(c=>c[1]).join(','),'product_no',false);
   if(!data){alert('データの取得に失敗しました。時間をおいて再度お試しください');return;}
-  // フィルタ適用後の表示対象をエクスポート（現在の絞り込みを反映）
-  const no=(document.getElementById('p_no').value||'').trim();
-  const brand=(document.getElementById('p_brand').value||'').trim().toLowerCase();
-  const shape=(document.getElementById('p_shape').value||'').trim().toLowerCase();
-  const shelf=(document.getElementById('p_shelf').value||'').trim().toLowerCase();
-  const status=document.getElementById('p_status').value;
-  const rows=data.filter(d=>{
-    if(no&&!String(d.product_no||'').includes(no))return false;
-    if(brand&&!(d.brand_name||'').toLowerCase().includes(brand))return false;
-    if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
-    if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
-    if(status&&d.status!==status)return false;
-    return true;
-  });
+  // フィルタ適用後の表示対象をエクスポート（期間フィルタ含め現在の絞り込みを反映）
+  const rows=filterProducts(data);
   const esc=v=>{if(v===null||v===undefined)return '';const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   const header=cols.map(c=>c[0]).join(',');
   const body=rows.map(d=>cols.map(c=>{let v=d[c[1]];if(c[1]==='created_at'&&v)v=v.slice(0,10);return esc(v);}).join(',')).join('\n');
