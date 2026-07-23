@@ -414,6 +414,10 @@ tr:hover td{background:#f7faf6;}
   padding:5px;
   border-radius:10px;
   background:#eef2ed;
+  position:sticky;
+  top:64px;
+  z-index:9;
+  box-shadow:0 4px 10px rgba(20,28,22,.06);
 }
 .step-item{
   min-height:36px;
@@ -719,7 +723,7 @@ button[onclick="exportProductsCSV()"]{
             </tr>
           </thead>
           <tbody id="salesSheetBody">
-            <tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px;font-family:'Noto Sans JP',sans-serif;">読み込み中...</td></tr>
+            <tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px;font-family:'Noto Sans JP',sans-serif;">読み込み中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -827,7 +831,12 @@ button[onclick="exportProductsCSV()"]{
   <div class="modal">
     <div class="modal-head">
       <h3>商品編集 <span id="editNo" class="no-id"></span></h3>
-      <button class="modal-close" onclick="closeEditModal()">×</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="modal-close" id="e_prevBtn" title="前の商品" onclick="gotoAdjacentProduct(-1)">▲</button>
+        <button class="modal-close" id="e_nextBtn" title="次の商品" onclick="gotoAdjacentProduct(1)">▼</button>
+        <span id="e_navPos" style="font-size:11px;color:var(--text3);min-width:52px;text-align:center;"></span>
+        <button class="modal-close" onclick="closeEditModal()">×</button>
+      </div>
     </div>
 
     <!-- 3-STEP BAR -->
@@ -930,7 +939,7 @@ button[onclick="exportProductsCSV()"]{
         <p>出品用写真をアップロード（リペア後）</p>
       </div>
       <div class="grid" style="margin-top:12px;">
-        <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます</span></div>
+        <div class="field full"><label>気になる状態（AI入力前に記入）</label><input type="text" id="e_conditionInputAI" placeholder="例：軽微なスレあり"><span class="ai-hint">※ AI自動入力時に使用されます（保存されます）</span></div>
       </div>
       <div class="btn-row">
         <button class="btn btn-trend" id="e_trendBtn" onclick="fetchTrend()">トレンド検索</button>
@@ -986,7 +995,13 @@ button[onclick="exportProductsCSV()"]{
           <label style="color:var(--teal);font-weight:600;">details（財布・バッグのみ／開閉仕様・ポケット・テンプレに反映）</label>
           <div id="e_detailsBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px;"></div>
         </div>
-        <div class="field full"><label>商品名（タイトル）</label><input type="text" id="e_productTitle" placeholder="AIが自動生成"></div>
+        <div class="field full">
+          <label style="display:flex;align-items:center;justify-content:space-between;">商品名（タイトル）
+            <button type="button" onclick="copyFieldValue('e_productTitle','titleCopyMsg')" style="padding:3px 12px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--teal);cursor:pointer;font-weight:600;">コピー</button>
+          </label>
+          <input type="text" id="e_productTitle" placeholder="AIが自動生成">
+          <span id="titleCopyMsg" style="font-size:11px;color:var(--green);display:none;">コピーしました</span>
+        </div>
         <div class="field full"><label>キーワード（SEOワード）</label><textarea id="e_keywords" placeholder="AIが自動生成"></textarea></div>
         <div class="field full"><label>商品名タイトル候補（コピー用・AI5案）</label><textarea id="e_keywordsCopy" placeholder="AIが5案を自動生成"></textarea></div>
         <div class="field full"><label>商品文章</label><textarea id="e_productDescription" placeholder="AIが自動生成" style="min-height:100px;"></textarea></div>
@@ -1126,7 +1141,7 @@ let allProductsCache=[];
 let trendCache=null; // トレンド検索結果を保持
 
 // ==================== ブランド・形状マスタ ====================
-const BRAND_LIST=['ルイヴィトン','グッチ','コーチ','ディーゼル','ゲンテン','プラダ','シャネル','フェンディ','ポーター','イルビゾンテ','バーバリー','ダコタ','ボッテガベネタ','サロンドアルファード','クリスチャンディオール','シチズン','ヴィヴィアンウエストウッド','カシオ','ポロラルフローレン','ラシット','ベルサーチ','セリーヌ','カルティエ','セイコー','バレンシアガ','ヒステリックグラマー','ジャンニキャリーニ','トリーバーチ','コムデギャルソン','マイケルコース','オールドコーチ','ロンシャン','ミュウミュウ','マークジェイコブス','アニエスベー','ケイトスペード','アタオ','フルラ','サマンサタバサ','マークバイマークジェイコブス','ジミーチュウ','エルメス','レスポートサック','アディダス','エムシーエム','ロエベ','フェラガモ','アメリ','クロエ','ジャンニヴェルサーチ','マリメッコ','メゾンマルジェラ','ランバン','ユナイテッドアローズ','ヨウジヤマモト','アレキサンダーワン','オロビアンコ','カルバンクライン','キタムラ','ケンゾー','サンローラン','ステラマッカートニー','ティファニー','トゥミ','ナンバーナイン','バリー','バレンティノ','リーガル','アルマーニ','エトロ','オニツカタイガー','クラークス','グレゴリー','サマンサベガ','シーバイクロエ','ジャーナルスタンダード','トゥモローランド','ナイキ','ニューバランス','フェイラー','フォッシル','マッキントッシュ','マリークワント','ミステリーランチ','ラコステ','ランセル','リーバイス','レイバン','ワコール','ヨネックス','その他'];
+const BRAND_LIST=['Louis Vuitton','GUCCI','COACH','DIESEL','genten','PRADA','CHANEL','FENDI','PORTER','IL BISONTE','BURBERRY','Dakota','BOTTEGA VENETA','SALON DE ALFURD','Christian Dior','CITIZEN','Vivienne Westwood','CASIO','POLO RALPH LAUREN','russet','VERSACE','CELINE','Cartier','SEIKO','BALENCIAGA','HYSTERIC GLAMOUR','GIANNI CHIARINI','Tory Burch','COMME des GARÇONS','MICHAEL KORS','OLD COACH','Longchamp','MIU MIU','MARC JACOBS','agnès b.','kate spade','ATAO','FURLA','Samantha Thavasa','MARC BY MARC JACOBS','JIMMY CHOO','HERMÈS','LeSportsac','adidas','MCM','LOEWE','Ferragamo','AMERI','Chloé','GIANNI VERSACE','marimekko','Maison Margiela','LANVIN','UNITED ARROWS','Yohji Yamamoto','Alexander Wang','Orobianco','Calvin Klein','Kitamura','KENZO','Saint Laurent','Stella McCartney','Tiffany & Co.','TUMI','NUMBER (N)INE','Bally','Valentino Garavani','REGAL','ARMANI','ETRO','Onitsuka Tiger','Clarks','GREGORY','Samantha Vega','See By Chloé','JOURNAL STANDARD','TOMORROWLAND','NIKE','New Balance','FEILER','FOSSIL','MACKINTOSH','MARY QUANT','MYSTERY RANCH','LACOSTE','LANCEL','Levi\'s','Ray-Ban','Wacoal','YONEX','Other'];
 // 中カテゴリ → 形状候補
 const SHAPE_MAP={
   '財布':['二つ折り財布','三つ折り財布','長財布','マネークリップ','コインケース','カードケース','フラグメントケース','チェーンウォレット','キーケース','シガレットケース'],
@@ -1323,8 +1338,9 @@ async function updateStatusInline(sel){
   const id=sel.dataset.id;
   const newStatus=sel.value;
   sel.disabled=true;
+  const prevStatus=(productsListCache.find(d=>d.id===id)||{}).status||'';
   const {error}=await sb.from('products').update({status:newStatus}).eq('id',id);
-  if(error){alert('更新失敗: '+error.message);sel.disabled=false;return;}
+  if(error){alert('更新失敗: '+error.message);sel.value=prevStatus;sel.disabled=false;return;} // 失敗時は表示を元に戻す
   // 全キャッシュを同期更新（一覧・ダッシュボード・売上で値がズレないように）
   [allProductsCache,productsListCache,dashChartData,chartAllData,salesRawData].forEach(cache=>{
     if(Array.isArray(cache)){const it=cache.find(d=>d.id===id);if(it)it.status=newStatus;}
@@ -1518,7 +1534,9 @@ async function generateAI(){
   const shape=document.getElementById('e_itemShape').value.trim();
   const freeWord=document.getElementById('e_freeWord')?document.getElementById('e_freeWord').value.trim():'';
   const repairInput=getCheckedRepairs().join(' ');
-  const conditionInput=[document.getElementById('e_conditionRank')?.value,document.getElementById('e_conditionInputAI').value.trim()].filter(Boolean).join(' ');
+  const rankInput=document.getElementById('e_conditionRank')?.value||'';
+  const worryInput=document.getElementById('e_conditionInputAI').value.trim(); // 気になる状態
+  const conditionInput=[rankInput,worryInput].filter(Boolean).join(' ');
   const hasPhotos=editListingImages.length>0;
 
   if(!brand&&!shape&&!hasPhotos){alert('ブランド名・形状・写真のいずれかを入力してください');return;}
@@ -1530,14 +1548,18 @@ async function generateAI(){
   setProgress(10,'AI生成中...');
 
   try{
-    // トレンド検索結果は商品文章・タイトル・キーワードには反映しない（パネル表示のみ）
+    // トレンド検索済みならその注目キーワード・相場をタイトルSEOの材料として渡す
+    const trendKw=(trendCache&&Array.isArray(trendCache.hotKeywords))?trendCache.hotKeywords.filter(Boolean):[];
     const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
     const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
       +'productDescription=商品の魅力を伝える説明文のみ。状態ランク・シリアル/型番・実寸法・付属品・リペア項目の羅列や転記は書かない（それらは別欄で管理）。リペア情報が多くても文章に列挙せず、雰囲気だけ1文で触れる程度に。\n'
-      +'repairDetail=リペア項目が多くても要約し、「全体的に丁寧にメンテナンスを行いました」等のあいまい表現1〜2文のみ。部位名・作業名を列挙、断定しない（実際と違う場所を書かないため）。\n'
-      +'titleVariants=タイトル部品を5パターン（配列）。各要素は{"writingTitle":情景キャッチ14字程度(【】不要),"bigWord":最重要SEO1語,"midWord":中程度,"smallWord":補足,"longTailWord":複合ロングテール}。5つは必ず表現・語を変えて重複させない。\n'
-      +'リペア：'+(repairInput||'不明')+' 状態：'+(conditionInput||'不明')+'\n'
+      +'repairDetail=次の2つを必ず織り込む。(1)実施したメンテナンスの雰囲気（部位名や作業名は断定・列挙しない）。(2)「気になる状態」の内容を必ず反映し、欠点を隠さずポジティブかつフランクな口語で表現する（例：「使用感はありますが、味わいとして楽しめます」）。毎回同じ言い回しにせず、商品ごとに表現を変えた2〜3文。定型文の丸写しは禁止。\n'
+      +(worryInput?('気になる状態（必ずrepairDetailに反映）：'+worryInput+'\n'):'')
+      +'titleVariants=タイトル部品を5パターン（配列）。各要素は{"writingTitle":情景キャッチ14字程度(【】不要),"bigWord":最重要SEO1語,"midWord":中程度,"smallWord":補足,"longTailWord":複合ロングテール}。\n'
+      +'重要：5パターンは writingTitle も各SEOワードも全て別の語にする。同じ語を2回以上使い回さない。bigWord/midWord/smallWord/longTailWordは実際に検索されるワードを使い、意味のない繰り返しや同義語の重複を避ける。\n'
+      +(trendKw.length?('検索トレンドの注目キーワード（優先的にSEOワードへ活用）：'+trendKw.join(' / ')+'\n'):'')
+      +'リペア：'+(repairInput||'不明')+' 状態ランク：'+(rankInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
       +'JSONのみ返答：{"brandName":"","itemShape":"","keywords":"","titleVariants":[{"writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":""}],"productDescription":"","repairDetail":""}';
 
@@ -1874,12 +1896,26 @@ function renderRegisterPreviews(){
   const box=document.getElementById('r_previews');box.innerHTML='';
   registerImages.forEach((url,i)=>{
     const wrap=document.createElement('div');wrap.className='photo-wrap';
-    const img=document.createElement('img');img.src=url;img.className='preview-img';img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(url);
+    wrap.draggable=true;wrap.dataset.idx=i;
+    const img=document.createElement('img');img.src=url;img.className='preview-img';img.style.cursor='grab';img.onclick=()=>openImageViewer(url);
     const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.type='button';
     del.onclick=()=>{registerImages.splice(i,1);renderRegisterPreviews();};
     wrap.appendChild(img);wrap.appendChild(del);
     if(i>0)wrap.appendChild(makeMoveBtn('◀','left',()=>{[registerImages[i-1],registerImages[i]]=[registerImages[i],registerImages[i-1]];renderRegisterPreviews();}));
     if(i<registerImages.length-1)wrap.appendChild(makeMoveBtn('▶','right',()=>{[registerImages[i+1],registerImages[i]]=[registerImages[i],registerImages[i+1]];renderRegisterPreviews();}));
+    // ドラッグで並べ替え
+    wrap.addEventListener('dragstart',e=>{dragSrc={type:'register',idx:i};wrap.style.opacity='.4';e.dataTransfer.effectAllowed='move';});
+    wrap.addEventListener('dragend',()=>{wrap.style.opacity='';wrap.style.outline='';});
+    wrap.addEventListener('dragover',e=>{if(dragSrc.type!=='register')return;e.preventDefault();wrap.style.outline='2px dashed var(--accent)';});
+    wrap.addEventListener('dragleave',()=>{wrap.style.outline='';});
+    wrap.addEventListener('drop',e=>{
+      e.preventDefault();wrap.style.outline='';
+      if(dragSrc.type!=='register')return;
+      const from=dragSrc.idx,to=i;dragSrc={type:null,idx:null};
+      if(from===to)return;
+      const [m]=registerImages.splice(from,1);registerImages.splice(to,0,m);
+      renderRegisterPreviews();
+    });
     box.appendChild(wrap);
   });
 }
@@ -2013,11 +2049,41 @@ async function getNextProductNo(){
   return 1;
 }
 
+// ==================== 必須項目チェック ====================
+// fields: [[要素id, 表示名]]。未入力があれば赤枠にして項目名の配列を返す
+function validateRequired(fields){
+  const missing=[];
+  fields.forEach(([id,label])=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const ok=String(el.value||'').trim()!=='';
+    // CSS側が !important 指定のため、こちらも important で上書きする
+    if(ok){el.style.removeProperty('border-color');el.style.removeProperty('box-shadow');}
+    else{el.style.setProperty('border-color','var(--red)','important');el.style.setProperty('box-shadow','0 0 0 3px rgba(188,48,48,.15)','important');}
+    if(!ok)missing.push(label);
+  });
+  return missing;
+}
+function clearRequiredMarks(fields){
+  fields.forEach(([id])=>{const el=document.getElementById(id);if(el){el.style.removeProperty('border-color');el.style.removeProperty('box-shadow');}});
+}
+// 仕入れ登録の必須（写真のみ任意）
+const REQ_REGISTER=[['r_mainCategory','大カテゴリー'],['r_subCategory','中カテゴリー'],['r_purchasePrice','仕入れ価格'],['r_itemCondition','入庫時商品状態'],['r_purchaseSource','仕入れ先'],['r_listingAccount','出品アカウント'],['r_brandName','ブランド名'],['r_itemShape','形状'],['r_freeWord','フリーワード'],['r_priceHigh','販売予定価格（上振れ）'],['r_priceLow','販売予定価格（下振れ）']];
+// 出品準備(STEP2)の必須（シリアル・モデル番号・サイズ・ポケット数は任意）
+const REQ_STEP2=[['e_listingDate','出品日'],['e_conditionRank','状態ランク'],['e_material','素材'],['e_color','カラー'],['e_priceHigh','販売予定価格（上振れ）'],['e_priceLow','販売予定価格（下振れ）'],['e_productTitle','商品名（タイトル）'],['e_keywords','キーワード（SEOワード）'],['e_keywordsCopy','商品名タイトル候補'],['e_productDescription','商品文章'],['e_repairDetail','リペア内容（詳細）']];
+
 // ==================== 新規登録 ====================
 async function saveNewProduct(){
   const btn=document.getElementById('r_saveBtn');
   const status=document.getElementById('r_saveStatus');
   if(btn&&btn.disabled)return; // 二重送信防止
+  // 必須チェック（写真以外すべて）
+  const missing=validateRequired(REQ_REGISTER);
+  if(missing.length){
+    status.className='status-msg err';
+    status.textContent='未入力があります：'+missing.join('、');
+    return;
+  }
   if(btn)btn.disabled=true;
   status.className='status-msg';status.textContent='保存中...';
   try{
@@ -2048,11 +2114,26 @@ async function saveNewProduct(){
   }
   if(btn)btn.disabled=false;
 }
-function clearRegisterForm(){document.querySelectorAll('#register input,#register select,#register textarea').forEach(el=>{if(el.type!=='file')el.value='';});registerImages=[];document.getElementById('r_previews').innerHTML='';}
+function clearRegisterForm(){document.querySelectorAll('#register input,#register select,#register textarea').forEach(el=>{if(el.type!=='file')el.value='';});clearRequiredMarks(REQ_REGISTER);document.getElementById('r_saveStatus').textContent='';registerImages=[];document.getElementById('r_previews').innerHTML='';}
 
 // ==================== ステージ保存 ====================
 async function saveStage(step,nextStep){
-  const statusEl=document.getElementById(`e_status${step}`);statusEl.className='status-msg';statusEl.textContent='保存中...';
+  const statusEl=document.getElementById(`e_status${step}`);
+  // STEP2は必須チェック（シリアル・モデル番号・サイズ・ポケット数は任意）
+  if(step===2){
+    const req=[...REQ_STEP2];
+    const cat=document.getElementById('e_subCategory').value;
+    if(cat==='財布'&&document.getElementById('dt_openType'))req.push(['dt_openType','開閉仕様']);
+    const missing=validateRequired(req);
+    if(getCheckedAccessories().length===0)missing.push('付属品');
+    if(getCheckedRepairs().length===0)missing.push('リペア詳細');
+    if(missing.length){
+      statusEl.className='status-msg err';
+      statusEl.textContent='未入力があります：'+missing.join('、');
+      return;
+    }
+  }
+  statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
   if(step===1){
     updates={main_category:document.getElementById('e_mainCategory').value,sub_category:document.getElementById('e_subCategory').value,purchase_price:Number(document.getElementById('e_purchasePrice').value)||null,item_condition:document.getElementById('e_itemCondition').value,purchase_source:document.getElementById('e_purchaseSource').value,listing_account:document.getElementById('e_listingAccount').value,brand_name:document.getElementById('e_brandName').value,item_shape:document.getElementById('e_itemShape').value,free_word:document.getElementById('e_freeWord').value};
@@ -2069,7 +2150,7 @@ async function saveStage(step,nextStep){
     const rPh=Number(document.getElementById('e_priceHigh').value)||null;
     const rPl=Number(document.getElementById('e_priceLow').value)||null;
     const rMid=(rPh&&rPl)?Math.round((rPh+rPl)/2):null;
-    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:JSON.stringify(getSizeData()),serial_no:document.getElementById('e_serialNo').value,model_no:document.getElementById('e_modelNo').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:(rPh&&rMid)?Math.round((rPh+rMid)/2):null,price_low_mid:(rPl&&rMid)?Math.round((rPl+rMid)/2):null};
+    updates={repair_detail_checks:checkedRepairs.length?checkedRepairs.join(','):null,listing_date:document.getElementById('e_listingDate').value||null,condition_rank:document.getElementById('e_conditionRank').value,material:document.getElementById('e_material').value,color:document.getElementById('e_color').value,accessories:getCheckedAccessories().join(','),size_input:JSON.stringify(getSizeData()),condition_input:document.getElementById('e_conditionInputAI').value,serial_no:document.getElementById('e_serialNo').value,model_no:document.getElementById('e_modelNo').value,product_title:document.getElementById('e_productTitle').value,keywords:document.getElementById('e_keywords').value,keywords_copy:document.getElementById('e_keywordsCopy').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,price_high:rPh,price_low:rPl,price_mid:rMid,price_high_mid:(rPh&&rMid)?Math.round((rPh+rMid)/2):null,price_low_mid:(rPl&&rMid)?Math.round((rPl+rMid)/2):null};
     // 財布・バッグの【details】（開閉仕様・ポケット）を保存
     const dtCat=document.getElementById('e_subCategory').value;
     updates.details_json=(dtCat==='財布'||dtCat==='バッグ')?JSON.stringify(getDetailsData()):null;
@@ -2086,7 +2167,7 @@ async function saveStage(step,nextStep){
   if(step===3){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
     const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitGross/rev*100)+'%':null;
-    updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate};
+    updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,carrier:document.getElementById('e_carrier').value,ship_size:document.getElementById('e_shipSize').value,ship_region:document.getElementById('e_shipRegion').value,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate};
     // 「売却日」と「売上」の両方が入っている時だけ「入金」へ。
     // （売上だけ・棚番だけの編集で勝手に入金にならないようにする）
     if(rev&&document.getElementById('e_soldDate').value)updates.status='入金';
@@ -2138,14 +2219,53 @@ function redrawEditGallery(type,urls){
   const list=urls||[];
   list.forEach((u,i)=>{
     const wrap=document.createElement('div');wrap.className='photo-wrap';
-    const img=document.createElement('img');img.src=u;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(u);
+    wrap.draggable=true;wrap.dataset.idx=i;
+    const img=document.createElement('img');img.src=u;img.style.cursor='grab';img.onclick=()=>openImageViewer(u);
     const del=document.createElement('button');del.className='photo-del';del.textContent='×';del.type='button';
     del.onclick=()=>deletePhoto(type,i,editingId);
     wrap.appendChild(img);wrap.appendChild(del);
     if(i>0)wrap.appendChild(makeMoveBtn('◀','left',()=>movePhoto(type,i,-1)));
     if(i<list.length-1)wrap.appendChild(makeMoveBtn('▶','right',()=>movePhoto(type,i,1)));
+    attachPhotoDnD(wrap,type);
     gallery.appendChild(wrap);
   });
+}
+// 写真のドラッグ＆ドロップ並べ替え
+let dragSrc={type:null,idx:null};
+function attachPhotoDnD(wrap,type){
+  wrap.addEventListener('dragstart',e=>{
+    dragSrc={type,idx:Number(wrap.dataset.idx)};
+    wrap.style.opacity='.4';
+    e.dataTransfer.effectAllowed='move';
+    try{e.dataTransfer.setData('text/plain',String(dragSrc.idx));}catch(_){}
+  });
+  wrap.addEventListener('dragend',()=>{wrap.style.opacity='';wrap.style.outline='';});
+  wrap.addEventListener('dragover',e=>{
+    if(dragSrc.type!==type)return;
+    e.preventDefault();e.dataTransfer.dropEffect='move';
+    wrap.style.outline='2px dashed var(--accent)';
+  });
+  wrap.addEventListener('dragleave',()=>{wrap.style.outline='';});
+  wrap.addEventListener('drop',async e=>{
+    e.preventDefault();wrap.style.outline='';
+    if(dragSrc.type!==type)return;
+    const to=Number(wrap.dataset.idx),from=dragSrc.idx;
+    dragSrc={type:null,idx:null};
+    if(from===to||isNaN(from)||isNaN(to))return;
+    await reorderPhoto(type,from,to);
+  });
+}
+// from の写真を to の位置へ差し込む（DBに即保存）
+async function reorderPhoto(type,from,to){
+  const col=type==='purchase'?'photo_urls':'listing_photo_urls';
+  const urls=(currentEditData&&Array.isArray(currentEditData[col]))?[...currentEditData[col]]:[];
+  if(from<0||from>=urls.length||to<0||to>=urls.length)return;
+  const [moved]=urls.splice(from,1);
+  urls.splice(to,0,moved);
+  const {error}=await sb.from('products').update({[col]:urls}).eq('id',editingId);
+  if(error){alert('並べ替えの保存に失敗しました: '+error.message);return;}
+  currentEditData[col]=urls;
+  redrawEditGallery(type,urls);
 }
 // 保存済み写真の並べ替え（DBに即保存。1枚目が一覧のサムネイルになる）
 async function movePhoto(type,index,dir){
@@ -2192,6 +2312,27 @@ function calcSoldProfit(){
 }
 
 // ==================== 編集モーダル ====================
+// 編集モーダルを開いたまま、一覧の並び順で前(-1)/次(+1)の商品へ移動
+async function gotoAdjacentProduct(dir){
+  if(!editingId||!productsViewCache.length)return;
+  const idx=productsViewCache.findIndex(d=>d.id===editingId);
+  const next=idx+dir;
+  if(idx<0||next<0||next>=productsViewCache.length)return;
+  const step=[1,2,3].find(i=>document.getElementById('step'+i+'panel').classList.contains('active'))||1;
+  await openEdit(productsViewCache[next].id);
+  switchStep(step);   // 同じステップのまま移動する
+}
+// 前後ボタンの活性状態と位置表示を更新
+function updateNavButtons(){
+  const idx=productsViewCache.findIndex(d=>d.id===editingId);
+  const prev=document.getElementById('e_prevBtn'),next=document.getElementById('e_nextBtn'),pos=document.getElementById('e_navPos');
+  if(!prev||!next)return;
+  const has=idx>=0&&productsViewCache.length>0;
+  prev.disabled=!has||idx<=0;
+  next.disabled=!has||idx>=productsViewCache.length-1;
+  [prev,next].forEach(b=>{b.style.opacity=b.disabled?'.35':'1';b.style.cursor=b.disabled?'default':'pointer';});
+  if(pos)pos.textContent=has?((idx+1)+' / '+productsViewCache.length):'';
+}
 async function openEdit(id){
   const {data}=await sb.from('products').select('*').eq('id',id).single();
   if(!data)return;
@@ -2219,7 +2360,7 @@ async function openEdit(id){
   set('e_subCategory',normSub);
   updateShapeOptions('e_subCategory','e_itemShape',data.item_shape||'');
   updateMaterialOptions(data.material||'');
-  set('e_conditionRank',data.condition_rank);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_serialNo',data.serial_no);set('e_modelNo',data.model_no);
+  set('e_conditionRank',data.condition_rank);set('e_color',data.color);setCheckedAccessories(data.accessories);set('e_serialNo',data.serial_no);set('e_modelNo',data.model_no);set('e_conditionInputAI',data.condition_input);
   // 財布・バッグの【details】入力を復元
   {let dj=null;try{dj=data.details_json?((typeof data.details_json==='string')?JSON.parse(data.details_json):data.details_json):null;}catch(e){}renderDetailsOptions(normSub,dj);}
   // サイズ個別入力を復元（旧フリーテキストデータはJSONでないため空扱い）
@@ -2232,11 +2373,15 @@ async function openEdit(id){
   set('e_priceHigh',data.price_high);set('e_priceLow',data.price_low);set('e_priceMid',data.price_mid);set('e_priceHighMid',data.price_high_mid);set('e_priceLowMid',data.price_low_mid);
   set('e_productTitle',data.product_title);set('e_keywords',data.keywords);set('e_keywordsCopy',data.keywords_copy);set('e_productDescription',data.product_description);set('e_repairDetail',data.repair_detail);
   set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);set('e_shippingCost',data.shipping_cost);
+  // 配送会社・サイズ・地域を復元（送料の根拠が再編集時に消えないように）
+  set('e_carrier',data.carrier);set('e_shipSize',data.ship_size);set('e_shipRegion',data.ship_region);
+  if(data.carrier){const cf=document.getElementById('e_carrier').value;const showBoth=(cf==='yamato'||cf==='sagawa');document.getElementById('e_sizeField').style.display=showBoth?'flex':'none';document.getElementById('e_regionField').style.display=showBoth?'flex':'none';}
   set('e_profitAfterShipping',data.profit_after_shipping);set('e_profitGross',data.profit_gross);set('e_profitRate',data.profit_rate);
   if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';}
   const stepMap={'仕分け前':1,'検品':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリオークション':3,'入金':3};
   switchStep(stepMap[data.status]||1);
   calcEstProfit();
+  updateNavButtons();
   document.getElementById('editModal').classList.add('open');
   setTimeout(()=>{setupTemplateListeners();updateListingTemplate();},100);
 }
@@ -2247,7 +2392,10 @@ function closeEditModal(){
     if(el.type==='file')el.value='';
     else if(el.type==='checkbox')el.checked=false;
     else el.value='';
+    // 必須未入力の赤枠を次回に持ち越さない
+    el.style.removeProperty('border-color');el.style.removeProperty('box-shadow');
   });
+  [1,2,3].forEach(i=>{const s=document.getElementById('e_status'+i);if(s){s.textContent='';s.className='status-msg';}});
   ['e_purchasePhotos','e_listingPhotos'].forEach(id=>{const g=document.getElementById(id);if(g)g.innerHTML='';});
   editListingImages=[];editPurchaseImages=[];
   editingId=null;currentEditData=null;trendCache=null;
@@ -2398,7 +2546,7 @@ function buildListingTemplate(d){
   secs.push('【 material 】\n'+(d.material?('・'+d.material):''));
   secs.push('【 serial / model no. 】\n・'+(d.serialNo||'')+' / '+(d.modelNo||''));
   secs.push('【 accessories 】\n'+(d.accessories||''));
-  secs.push('【 condition 】\n'+(d.condition||''));
+  secs.push('【 condition 】\n'+(d.condition||'')+'\n\n※状態ランク詳細はショップ情報をご確認ください。');
   secs.push('【 maintenance 】\n'+(d.maintenance||''));
   secs.push('【 Condition Details 】\n'+(d.repairDetail?('・'+d.repairDetail):''));
   secs.push('・当店では一点ずつ状態に合わせ、丁寧にメンテナンスを行っております。\n"もう一度、美しく使える"品質を大切に、\nブランド本来の魅力を活かしながら整えております。\n仕上がりは実物画像をご確認ください。');
@@ -2447,6 +2595,15 @@ function updateListingTemplate(){
   body.textContent=buildListingTemplate(getTemplateData());
 }
 
+// 任意の入力欄の値をコピー
+function copyFieldValue(fieldId,msgId){
+  const el=document.getElementById(fieldId);
+  if(!el||!el.value)return;
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const msg=document.getElementById(msgId);
+    if(msg){msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);}
+  });
+}
 function copyTemplate(){
   const body=document.getElementById('listingTemplateBody');
   if(!body||!body.textContent) return;
@@ -2458,7 +2615,10 @@ function copyTemplate(){
 }
 
 // 各入力フィールドの変更をテンプレートに反映
+let templateListenersReady=false;
 function setupTemplateListeners(){
+  if(templateListenersReady)return;   // モーダルを開くたびに重複登録しない
+  templateListenersReady=true;
   const fields=['e_productDescription','e_repairDetail'];
   fields.forEach(id=>{
     const el=document.getElementById(id);
@@ -2492,7 +2652,9 @@ async function loadDashboard(){
 
 // ==================== 商品一覧 ====================
 let productsListCache=[];
+let productsViewCache=[];   // 画面に表示中（フィルタ後）の並び。編集モーダルの前後移動で使う
 function renderProductsTable(data){
+  productsViewCache=data;
   document.getElementById('p_count').textContent=data.length+'件';
   document.getElementById('productsTable').innerHTML=data.length?data.map(d=>{
     // 出品用写真が入るまでは仕入れ時写真の1枚目、入ったら出品用の1枚目に切替
