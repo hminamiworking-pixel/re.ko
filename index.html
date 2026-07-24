@@ -2069,8 +2069,7 @@ function clearRequiredMarks(fields){
 }
 // 仕入れ登録の必須（写真のみ任意）
 const REQ_REGISTER=[['r_mainCategory','大カテゴリー'],['r_subCategory','中カテゴリー'],['r_purchasePrice','仕入れ価格'],['r_itemCondition','入庫時商品状態'],['r_purchaseSource','仕入れ先'],['r_listingAccount','出品アカウント'],['r_brandName','ブランド名'],['r_itemShape','形状'],['r_freeWord','フリーワード'],['r_priceHigh','販売予定価格（上振れ）'],['r_priceLow','販売予定価格（下振れ）']];
-// 出品準備(STEP2)の必須（シリアル・モデル番号・サイズ・ポケット数は任意）
-const REQ_STEP2=[['e_listingDate','出品日'],['e_conditionRank','状態ランク'],['e_material','素材'],['e_color','カラー'],['e_priceHigh','販売予定価格（上振れ）'],['e_priceLow','販売予定価格（下振れ）'],['e_productTitle','商品名（タイトル）'],['e_keywords','キーワード（SEOワード）'],['e_keywordsCopy','商品名タイトル候補'],['e_productDescription','商品文章'],['e_repairDetail','リペア内容（詳細）']];
+// ※出品準備(STEP2)は必須項目なし（全項目が任意）
 
 // ==================== 新規登録 ====================
 async function saveNewProduct(){
@@ -2119,20 +2118,7 @@ function clearRegisterForm(){document.querySelectorAll('#register input,#registe
 // ==================== ステージ保存 ====================
 async function saveStage(step,nextStep){
   const statusEl=document.getElementById(`e_status${step}`);
-  // STEP2は必須チェック（シリアル・モデル番号・サイズ・ポケット数は任意）
-  if(step===2){
-    const req=[...REQ_STEP2];
-    const cat=document.getElementById('e_subCategory').value;
-    if(cat==='財布'&&document.getElementById('dt_openType'))req.push(['dt_openType','開閉仕様']);
-    const missing=validateRequired(req);
-    if(getCheckedAccessories().length===0)missing.push('付属品');
-    if(getCheckedRepairs().length===0)missing.push('リペア詳細');
-    if(missing.length){
-      statusEl.className='status-msg err';
-      statusEl.textContent='未入力があります：'+missing.join('、');
-      return;
-    }
-  }
+  // 出品準備(STEP2)は必須チェックなし（全項目が任意）
   statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
   if(step===1){
