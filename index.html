@@ -541,15 +541,52 @@ button[onclick="exportProductsCSV()"]{
   .card-title{font-size:13px;}
   .field input,.field select,.field textarea{font-size:16px;}
 }
+/* ===== ログイン画面 ===== */
+.auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:32px 28px;width:100%;max-width:360px;}
+.auth-card h2{font-size:20px;font-weight:700;margin-bottom:4px;letter-spacing:.1em;}
+.auth-card p.sub{font-size:12px;color:var(--text2);margin-bottom:18px;}
+.auth-card label{font-size:12px;color:#4f5b51;display:block;margin:12px 0 4px;}
+.auth-card input{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:15px;outline:none;background:#fff;}
+.auth-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,79,62,.12);}
+.auth-btn{width:100%;margin-top:20px;min-height:44px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;}
+.auth-btn:disabled{opacity:.6;cursor:default;}
+.auth-err{color:var(--red);font-size:12px;margin-top:12px;min-height:16px;line-height:1.5;}
+.nav-account{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.nav-account .email{font-size:11px;color:var(--text2);white-space:nowrap;}
+.nav-account button{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:999px;height:30px;padding:0 12px;font-size:11px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;}
+.nav-account button:hover{color:var(--text);border-color:var(--text);}
+@media (max-width:720px){.nav-account .email{display:none;}}
 </style>
 </head>
 <body>
+<!-- ログイン画面 -->
+<div class="auth-overlay" id="authOverlay" style="display:none;">
+  <div class="auth-card">
+    <h2>Re：居</h2>
+    <p class="sub">ログインしてください</p>
+    <form onsubmit="doLogin(event)">
+      <label>メールアドレス</label>
+      <input type="email" id="authEmail" autocomplete="username" required>
+      <label>パスワード</label>
+      <input type="password" id="authPassword" autocomplete="current-password" required>
+      <button class="auth-btn" id="authBtn" type="submit">ログイン</button>
+      <div class="auth-err" id="authErr"></div>
+    </form>
+  </div>
+</div>
+
 <nav class="nav">
   <span class="nav-brand">Re：居</span>
   <button class="nav-btn active" onclick="showPage('dashboard',this)">ダッシュボード</button>
   <button class="nav-btn" onclick="showPage('register',this)">新規登録</button>
   <button class="nav-btn" onclick="showPage('products',this)">商品一覧</button>
   <button class="nav-btn" onclick="showPage('sales',this)">売上管理</button>
+  <div class="nav-account" id="navAccount" style="display:none;">
+    <span class="email" id="navEmail"></span>
+    <button onclick="changePassword()">パスワード変更</button>
+    <button onclick="doLogout()">ログアウト</button>
+  </div>
 </nav>
 
 <datalist id="brandList"></datalist>
@@ -2762,8 +2799,56 @@ async function loadSales(){
   salesListCache=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date));renderSalesTable(salesListCache);
 }
 
-populateBrandList();
-loadDashboard();
+// ==================== 認証（Supabase Auth・メール＋パスワード）====================
+let appInited=false;
+function initAppOnce(){
+  if(appInited)return;appInited=true;
+  populateBrandList();
+  loadDashboard();
+}
+function showAuthScreen(show){
+  document.getElementById('authOverlay').style.display=show?'flex':'none';
+  document.getElementById('navAccount').style.display=show?'none':'flex';
+}
+async function refreshAuthUI(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session&&session.user){
+    document.getElementById('navEmail').textContent=session.user.email||'';
+    showAuthScreen(false);
+    initAppOnce();
+  }else{
+    showAuthScreen(true);
+  }
+}
+async function doLogin(e){
+  e.preventDefault();
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  const btn=document.getElementById('authBtn'),err=document.getElementById('authErr');
+  btn.disabled=true;err.textContent='';
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  btn.disabled=false;
+  if(error){err.textContent='ログインに失敗しました。メール・パスワードをご確認ください。';return;}
+  document.getElementById('authPassword').value='';
+  await refreshAuthUI();
+}
+async function doLogout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+async function changePassword(){
+  const p1=prompt('新しいパスワードを入力してください（6文字以上）');
+  if(p1===null)return;
+  if(p1.length<6){alert('6文字以上で入力してください');return;}
+  const p2=prompt('確認のため、もう一度入力してください');
+  if(p2===null)return;
+  if(p1!==p2){alert('パスワードが一致しません');return;}
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error){alert('変更に失敗しました：'+error.message);return;}
+  alert('パスワードを変更しました');
+}
+sb.auth.onAuthStateChange((event)=>{ if(event==='SIGNED_OUT')showAuthScreen(true); });
+refreshAuthUI();
 </script>
 </body>
 </html>
