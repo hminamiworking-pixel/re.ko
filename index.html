@@ -1608,9 +1608,16 @@ async function generateAI(){
   const rankInput=document.getElementById('e_conditionRank')?.value||'';
   const worryInput=document.getElementById('e_conditionInputAI').value.trim(); // 気になる状態
   const conditionInput=[rankInput,worryInput].filter(Boolean).join(' ');
-  const hasPhotos=editListingImages.length>0;
+  // 保存済みの出品用写真も対象に含める（撮影→登録→AI生成 の工程のため）
+  const savedListingPhotos=(currentEditData&&Array.isArray(currentEditData.listing_photo_urls))?currentEditData.listing_photo_urls.length:0;
+  const hasPhotos=editListingImages.length>0||savedListingPhotos>0;
 
-  if(!brand&&!shape&&!hasPhotos){alert('ブランド名・形状・写真のいずれかを入力してください');return;}
+  // 写真・リペア詳細・気になる状態が揃うまでAI自動生成は実行しない
+  const lack=[];
+  if(!hasPhotos)lack.push('出品用写真');
+  if(!repairInput)lack.push('リペア詳細');
+  if(!worryInput)lack.push('気になる状態');
+  if(lack.length){alert('AI自動入力の前に次を入力してください：\n・'+lack.join('\n・'));return;}
 
   const btn=document.getElementById('e_aiBtn');
   const status=document.getElementById('e_aiStatus');
@@ -2145,7 +2152,10 @@ function clearRequiredMarks(fields){
 }
 // 仕入れ登録の必須（写真のみ任意）
 const REQ_REGISTER=[['r_mainCategory','大カテゴリー'],['r_subCategory','中カテゴリー'],['r_purchasePrice','仕入れ価格'],['r_itemCondition','入庫時商品状態'],['r_purchaseSource','仕入れ先'],['r_listingAccount','出品アカウント'],['r_brandName','ブランド名'],['r_itemShape','形状'],['r_freeWord','フリーワード'],['r_priceHigh','販売予定価格（上振れ）'],['r_priceLow','販売予定価格（下振れ）']];
-// ※出品準備(STEP2)は必須項目なし（全項目が任意）
+// 出品準備(STEP2)の固定の必須項目（+ サイズ各欄・カテゴリ別のdetails欄も必須。動的生成のため保存時に判定）
+// シリアル/モデル番号・サイズ・ポケット数・商品タイトルより下の項目は保存時は任意。
+// リペア詳細/気になる状態は保存できるが、AI自動生成の実行には必要（generateAI側でチェック）。
+const REQ_STEP2=[['e_listingDate','出品日'],['e_conditionRank','状態ランク'],['e_material','素材'],['e_color','カラー'],['e_priceHigh','販売予定価格（上振れ）'],['e_priceLow','販売予定価格（下振れ）']];
 
 // ==================== 新規登録 ====================
 async function saveNewProduct(){
@@ -2194,7 +2204,40 @@ function clearRegisterForm(){document.querySelectorAll('#register input,#registe
 // ==================== ステージ保存 ====================
 async function saveStage(step,nextStep){
   const statusEl=document.getElementById(`e_status${step}`);
-  // 出品準備(STEP2)は必須チェックなし（全項目が任意）
+  // 出品準備(STEP2)の必須チェック（シリアル番号・モデル番号・サイズ・ポケット数は任意）
+  if(step===2){
+    const missing=validateRequired(REQ_STEP2);
+    // サイズ（カテゴリ別に動的生成される各欄）
+    const sizeFields=[];
+    document.querySelectorAll('#e_sizeBox .sz-in').forEach(el=>{
+      const lb=(el.dataset.label||'').replace(/_/g,'・');
+      sizeFields.push([el,'サイズ：'+lb]);
+    });
+    // カテゴリ別のdetails（財布=開閉仕様/札入れ数… バッグ=外ポケ/内ポケ）
+    const detailFields=[];
+    const openSel=document.getElementById('dt_openType');
+    if(openSel){
+      const lbl=(document.querySelector('#e_detailsBox .field label')||{}).textContent||'開閉仕様';
+      detailFields.push([openSel,lbl]);
+    }
+    document.querySelectorAll('#e_detailsBox .dt-pk').forEach(el=>{
+      detailFields.push([el,(el.dataset.name||'')+'（数）']);
+    });
+    [...sizeFields,...detailFields].forEach(([el,label])=>{
+      const ok=String(el.value||'').trim()!=='';
+      if(ok){el.style.removeProperty('border-color');el.style.removeProperty('box-shadow');}
+      else{
+        el.style.setProperty('border-color','var(--red)','important');
+        el.style.setProperty('box-shadow','0 0 0 3px rgba(188,48,48,.15)','important');
+        missing.push(label);
+      }
+    });
+    if(missing.length){
+      statusEl.className='status-msg err';
+      statusEl.textContent='未入力があります：'+missing.join('、');
+      return;
+    }
+  }
   statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
   if(step===1){
@@ -2537,12 +2580,16 @@ function buildSheetYearOptions(data){
 }
 function applySheetFilter(){
   const yr=document.getElementById('sf_year').value;const mo=document.getElementById('sf_month').value;
+  // 集計と同じく「仕入れ日（created_at）」だけを基準に絞り込む
+  // （7/1仕入れ・7/25売却 → 売上も7/1の週に計上されるため、フィルタも仕入れ日で揃える）
   const filtered=salesRawData.filter(d=>{
-    const cd=d.created_at?d.created_at.slice(0,10):'';const sd=d.sold_date||'';const refDate=sd||cd;
-    if(yr&&!refDate.startsWith(yr))return false;return true;
+    const cd=d.created_at?d.created_at.slice(0,10):'';
+    if(!cd)return false;
+    if(yr&&cd.slice(0,4)!==yr)return false;
+    if(mo&&cd.slice(5,7)!==mo)return false;
+    return true;
   });
-  const moFiltered=mo?filtered.filter(d=>{const sd=(d.sold_date||'').slice(5,7);const cd=(d.created_at||'').slice(5,7);return sd===mo||cd===mo;}):filtered;
-  buildSheetTable(moFiltered);
+  buildSheetTable(filtered);
 }
 function clearSheetFilter(){document.getElementById('sf_year').value='';document.getElementById('sf_month').value='';buildSheetTable(salesRawData);}
 
@@ -2831,11 +2878,12 @@ async function loadSales(){
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
-  // 売掛金：発送前・受取評価前の商品の（売上×(1−手数料)−送料）合計
-  const receivableItems=data.filter(d=>['発送前','受取評価前'].includes(d.status));
+  // 売掛金：発送前・受け取り評価前の商品の（売上×(1−手数料)−送料）合計
+  // ステータスが「発送前」「受け取り評価前」の商品のみ（表記はALL_STATUSESと一致させる）
+  const receivableItems=data.filter(d=>['発送前','受け取り評価前'].includes(d.status));
   const receivable=receivableItems.reduce((s,d)=>{const rev=d.revenue||0;if(!rev)return s;const fee=(FEE_MAP[d.sold_platform]!==undefined?FEE_MAP[d.sold_platform]:10)/100;const ship=d.shipping_cost||0;return s+Math.floor(rev*(1-fee)-ship);},0);
   const rcSpan='<span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">';
-  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上 ${rcSpan}（各商品の売上金額の合計）</span></p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>純利益 ${rcSpan}（売上×(1−手数料)−仕入れ の合計）</span></p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div><div class="stat"><p>売掛金 ${rcSpan}（発送前・受取評価前／売上×(1−手数料)−送料）</span></p><h3>¥${receivable.toLocaleString()}</h3></div>`;
+  document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上 ${rcSpan}（各商品の売上金額の合計）</span></p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>純利益 ${rcSpan}（売上×(1−手数料)−仕入れ の合計）</span></p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div><div class="stat"><p>売掛金 ${rcSpan}（発送前・受け取り評価前／売上×(1−手数料)−送料）</span></p><h3>¥${receivable.toLocaleString()}</h3></div>`;
   buildSheetTable(data);
   salesListCache=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date));renderSalesTable(salesListCache);
 }
