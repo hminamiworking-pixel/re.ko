@@ -751,6 +751,7 @@ button[onclick="exportProductsCSV()"]{
               <th style="min-width:100px;">仕入れ価格計</th>
               <th style="min-width:100px;">売上計</th>
               <th style="min-width:100px;">利益計</th>
+              <th style="min-width:110px;">合計利益<br><span style="font-weight:400;font-size:9px;">売上−仕入れ</span></th>
               <th style="min-width:80px;">中央値計</th>
               <th style="min-width:80px;">下振れ計</th>
               <th style="min-width:80px;">送料計</th>
@@ -760,7 +761,7 @@ button[onclick="exportProductsCSV()"]{
             </tr>
           </thead>
           <tbody id="salesSheetBody">
-            <tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px;font-family:'Noto Sans JP',sans-serif;">読み込み中...</td></tr>
+            <tr><td colspan="13" style="text-align:center;color:var(--text3);padding:24px;font-family:'Noto Sans JP',sans-serif;">読み込み中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1131,8 +1132,8 @@ button[onclick="exportProductsCSV()"]{
       <div style="margin-top:16px;display:flex;justify-content:flex-end;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 18px;min-width:280px;">
           <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">見込み利益（中央値ベース）</div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益（売上×手数料−仕入れ）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>送料込み利益（−送料）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益①（売上×手数料−原価−送料）</span><span id="e_estProfit" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;"><span>利益②（売上×手数料−送料）</span><span id="e_estGross" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
           <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);"><span>利益率</span><span id="e_estRate" style="font-family:'Inter',sans-serif;font-weight:600;color:var(--text);">-</span></div>
           <div style="font-size:9px;color:var(--text3);margin-top:8px;">※中央値・手数料10%・送料750円の概算。売上入力で実績計算は上記</div>
         </div>
@@ -1368,6 +1369,12 @@ function updateShapeOptions(subCatId,shapeId,keepValue){
 }
 
 const ALL_STATUSES=['仕分け前','検品','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリオークション','入金'];
+// ステータスは前に戻さない（保存ボタンで巻き戻るのを防ぐ）
+function advanceStatus(current,target){
+  const a=ALL_STATUSES.indexOf(current),b=ALL_STATUSES.indexOf(target);
+  if(a<0)return target;          // 未知の値なら素直に設定
+  return b>a?target:undefined;   // 現在より後ろのときだけ更新
+}
 function statusOptions(current){
   return ALL_STATUSES.map(s=>`<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
 }
@@ -1541,12 +1548,39 @@ async function fetchTrend(){
 function cleanAI(v){
   return String(v||'').trim().replace(/^[\s【「『\[]+/,'').replace(/[\s】」』\]]+$/,'').replace(/\s+/g,' ');
 }
+// 200文字以内に収める（文末で自然に切る）
+function limitChars(text,max){
+  const t=String(text||'').trim();
+  if(t.length<=max)return t;
+  const cut=t.slice(0,max);
+  const idx=Math.max(cut.lastIndexOf('。'),cut.lastIndexOf('！'),cut.lastIndexOf('？'));
+  return idx>=Math.floor(max*0.5)?cut.slice(0,idx+1):cut;
+}
+// リペア文：文頭の「専門スタッフが」「専門職人が」等を除去
+function cleanRepairText(text){
+  let t=cleanAI(text);
+  t=t.replace(/^(?:当店の)?(?:専門|熟練|経験豊富)(?:の)?(?:スタッフ|職人|技術者)(?:が|により|によって|の手で)?\s*/,'');
+  return t;
+}
+// SEOワードが5案の中で重複しないよう除去
+function dedupeVariants(variants){
+  const used=new Set();
+  const norm=v=>cleanAI(v).toLowerCase().replace(/\s+/g,'');
+  return variants.map(v=>{
+    const out={writingTitle:cleanAI(v.writingTitle)};
+    ['bigWord','midWord','smallWord','longTailWord'].forEach(k=>{
+      const w=cleanAI(v[k]); const key=norm(w);
+      if(w&&!used.has(key)){used.add(key);out[k]=w;}else{out[k]='';}
+    });
+    return out;
+  });
+}
 function buildProductTitle(r){
   const FS='　',HS=' ';
   const g=id=>(document.getElementById(id)||{}).value||'';
   const wt=cleanAI(r.writingTitle);
-  const brand=cleanAI(r.brandName||g('e_brandName'));
-  const shape=cleanAI(r.itemShape||g('e_itemShape'));
+  const brand=cleanAI(g('e_brandName')||r.brandName);   // フォームの英語表記を優先
+  const shape=cleanAI(g('e_itemShape')||r.itemShape);
   const color=g('e_color').trim();
   const size=getTitleSize();
   const segs=[
@@ -1590,11 +1624,14 @@ async function generateAI(){
     const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
     const basePrompt='中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
-      +'productDescription=商品の魅力を伝える説明文のみ。状態ランク・シリアル/型番・実寸法・付属品・リペア項目の羅列や転記は書かない（それらは別欄で管理）。リペア情報が多くても文章に列挙せず、雰囲気だけ1文で触れる程度に。\n'
-      +'repairDetail=次の2つを必ず織り込む。(1)実施したメンテナンスの雰囲気（部位名や作業名は断定・列挙しない）。(2)「気になる状態」の内容を必ず反映し、欠点を隠さずポジティブかつフランクな口語で表現する（例：「使用感はありますが、味わいとして楽しめます」）。毎回同じ言い回しにせず、商品ごとに表現を変えた2〜3文。定型文の丸写しは禁止。\n'
+      +'productDescription=商品の魅力を伝える説明文。**必ず200文字以内**。状態ランク・シリアル/型番・実寸法・付属品・リペア項目の羅列や転記は書かない。リペア情報が多くても列挙せず雰囲気だけ1文で触れる程度に。\n'
+      +'文体ルール：接続詞を不自然に重ねない。「だがしかし」「ただそれでも」「しかしながらただ」等の重複逆接は禁止。逆接は1文に1つまで、自然な日本語で。\n'
+      +'repairDetail=次の2つを織り込む。(1)実施したメンテナンスの雰囲気（部位名や作業名は断定・列挙しない）。(2)「気になる状態」を必ず反映し、欠点を隠さずポジティブでフランクな口語に。\n'
+      +'repairDetailの禁止：文頭に「専門スタッフ」「専門職人」「熟練の職人」等の主語を置かない。動作から書き始める（例：×専門スタッフが全体のクリーニングを行いました→○全体のクリーニングを行いました）。毎回同じ言い回しにせず2〜3文。\n'
       +(worryInput?('気になる状態（必ずrepairDetailに反映）：'+worryInput+'\n'):'')
       +'titleVariants=タイトル部品を5パターン（配列）。各要素は{"writingTitle":情景キャッチ14字程度(【】不要),"bigWord":最重要SEO1語,"midWord":中程度,"smallWord":補足,"longTailWord":複合ロングテール}。\n'
-      +'重要：5パターンは writingTitle も各SEOワードも全て別の語にする。同じ語を2回以上使い回さない。bigWord/midWord/smallWord/longTailWordは実際に検索されるワードを使い、意味のない繰り返しや同義語の重複を避ける。\n'
+      +'SEOワードの絶対ルール：bigWord/midWord/smallWord/longTailWordは**4つとも異なる語**にする。5パターン合計20語も**全て重複させない**（同じ語・同義語の使い回し禁止）。実際に検索されるワードのみ。\n'
+      +'brandName/itemShapeは**英語表記**で返す（例：Louis Vuitton, GUCCI）。カタカナ表記にしない。\n'
       +(trendKw.length?('検索トレンドの注目キーワード（優先的にSEOワードへ活用）：'+trendKw.join(' / ')+'\n'):'')
       +'リペア：'+(repairInput||'不明')+' 状態ランク：'+(rankInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
@@ -1626,13 +1663,15 @@ async function generateAI(){
     if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
     if(r.itemShape) document.getElementById('e_itemShape').value=r.itemShape;
     // タイトル候補5案は buildProductTitle で固定の全角/半角配列に統一して組み立てる
-    const variants=Array.isArray(r.titleVariants)&&r.titleVariants.length?r.titleVariants:[r];
-    const candidates=variants.map(v=>buildProductTitle(Object.assign({brandName:r.brandName,itemShape:r.itemShape},v))).filter(Boolean);
-    document.getElementById('e_productTitle').value=candidates[0]||'';
-    document.getElementById('e_keywordsCopy').value=candidates.join('\n');   // コピー用欄＝候補5案（1行1案・同一配列）
+    let variants=Array.isArray(r.titleVariants)&&r.titleVariants.length?r.titleVariants:[r];
+    variants=dedupeVariants(variants);   // SEOワードの重複を全体で除去
+    // 商品名（タイトル）は1案目のフル構成
+    document.getElementById('e_productTitle').value=buildProductTitle(Object.assign({brandName:r.brandName,itemShape:r.itemShape},variants[0]||{}))||'';
+    // タイトル候補欄は【ライティングタイトル】のみを5案
+    document.getElementById('e_keywordsCopy').value=variants.map(v=>{const w=cleanAI(v.writingTitle);return w?('【'+w+'】'):'';}).filter(Boolean).join('\n');
     document.getElementById('e_keywords').value=r.keywords||'';
-    document.getElementById('e_productDescription').value=r.productDescription||'';
-    document.getElementById('e_repairDetail').value=r.repairDetail||'';
+    document.getElementById('e_productDescription').value=limitChars(r.productDescription||'',200);
+    document.getElementById('e_repairDetail').value=cleanRepairText(r.repairDetail||'');
     calcEditPrices();
 
     setProgress(100,'');
@@ -1910,13 +1949,13 @@ function calcEstProfit(){
   if(!ep)return;
   if(!mid){ep.textContent='-';eg.textContent='-';er.textContent='-';return;}
   const FEE=0.10,SHIP=750;
-  // 本計算(STEP③)・スプレッドシートと定義を統一
-  const gross=Math.floor(mid*(1-FEE)-cost);        // 利益(粗利益)＝売上×(1−手数料)−仕入れ（送料は引かない）
-  const afterShip=Math.floor(mid*(1-FEE)-SHIP-cost);// 送料込み利益（参考）
-  const rate=Math.floor(gross/mid*100);            // 利益率＝利益(粗利益)÷売上
+  // 定義：利益①＝売上×(1−手数料)−原価−送料 ／ 利益②＝売上×(1−手数料)−送料 ／ 利益率＝利益①÷売上
+  const profit1=Math.floor(mid*(1-FEE)-cost-SHIP);
+  const profit2=Math.floor(mid*(1-FEE)-SHIP);
+  const rate=Math.floor(profit1/mid*100);
   const fmt=v=>'¥'+v.toLocaleString();
-  ep.textContent=fmt(gross);
-  eg.textContent=fmt(afterShip);eg.style.color=afterShip<0?'var(--red)':'var(--text)';
+  ep.textContent=fmt(profit1);ep.style.color=profit1<0?'var(--red)':'var(--text)';
+  eg.textContent=fmt(profit2);eg.style.color=profit2<0?'var(--red)':'var(--text)';
   er.textContent=rate+'%';er.style.color=rate<0?'var(--red)':'var(--text)';
 }
 
@@ -2166,7 +2205,7 @@ async function saveStage(step,nextStep){
       const urls=await uploadImagesToStorage(editPurchaseImages,productNo,'purchase');
       if(urls.length){const existing=(currentEditData&&Array.isArray(currentEditData.photo_urls))?currentEditData.photo_urls:[];updates.photo_urls=existing.concat(urls);}
     }
-    if(nextStep)updates.status='撮影前';
+    if(nextStep){const ns=advanceStatus(currentEditData&&currentEditData.status,'撮影前');if(ns)updates.status=ns;}
   }
   if(step===2){
     const checkedRepairs=getCheckedRepairs();
@@ -2185,20 +2224,22 @@ async function saveStage(step,nextStep){
       const urls=await uploadImagesToStorage(editListingImages,productNo,'listing');
       if(urls.length){const existing=(currentEditData&&Array.isArray(currentEditData.listing_photo_urls))?currentEditData.listing_photo_urls:[];updates.listing_photo_urls=existing.concat(urls);}
     }
-    if(nextStep)updates.status='出品中';
+    if(nextStep){const ns=advanceStatus(currentEditData&&currentEditData.status,'出品中');if(ns)updates.status=ns;}
   }
   if(step===3){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
-    const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship-cost):null;const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost):null;const profitRate=rev?Math.floor(profitGross/rev*100)+'%':null;
+    // 利益①＝売上×(1−手数料)−原価−送料（各集計で使う主たる利益＝profit_gross）
+    // 利益②＝売上×(1−手数料)−送料（profit_after_shipping）／利益率＝利益①÷売上
+    const profitGross=rev?Math.floor(rev*(1-feeRate/100)-cost-ship):null;const profitWithShip=rev?Math.floor(rev*(1-feeRate/100)-ship):null;const profitRate=rev?Math.floor(profitGross/rev*100)+'%':null;
     updates={shelf_no:document.getElementById('e_shelfNo').value,sold_date:document.getElementById('e_soldDate').value||null,sold_platform:document.getElementById('e_soldPlatform').value,sold_to:document.getElementById('e_soldTo').value,revenue:rev||null,shipping_cost:ship||null,carrier:document.getElementById('e_carrier').value,ship_size:document.getElementById('e_shipSize').value,ship_region:document.getElementById('e_shipRegion').value,profit_after_shipping:profitWithShip,profit_gross:profitGross,profit_rate:profitRate};
     // 「売却日」と「売上」の両方が入っている時だけ「入金」へ。
     // （売上だけ・棚番だけの編集で勝手に入金にならないようにする）
-    if(rev&&document.getElementById('e_soldDate').value)updates.status='入金';
+    if(rev&&document.getElementById('e_soldDate').value){const ns=advanceStatus(currentEditData&&currentEditData.status,'入金');if(ns)updates.status=ns;}
   }
   // ===== 差分保存 =====
   // currentEditDataと比較し、実際に変わった項目だけをDBへ送る。
   // 写真URL・status・利益系の自動計算値は「常に意図して更新する項目」なので差分判定から除外（常に送る）。
-  const alwaysKeys=['photo_urls','listing_photo_urls','status','profit_after_shipping','profit_gross','profit_rate'];
+  const alwaysKeys=['photo_urls','listing_photo_urls','profit_after_shipping','profit_gross','profit_rate'];
   let payload=updates;
   if(currentEditData){
     payload={};
@@ -2330,7 +2371,7 @@ function calcSoldProfit(){
   const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
   document.getElementById('e_feeRate').value=feeRate+'%';
   if(!rev)return;
-  const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship-cost);const profitGross=Math.floor(rev*(1-feeRate/100)-cost);const profitRate=Math.floor(profitGross/rev*100);
+  const profitGross=Math.floor(rev*(1-feeRate/100)-cost-ship);const profitWithShip=Math.floor(rev*(1-feeRate/100)-ship);const profitRate=Math.floor(profitGross/rev*100);
   document.getElementById('e_profitAfterShipping').value=profitWithShip;document.getElementById('e_profitGross').value=profitGross;document.getElementById('e_profitRate').value=profitRate+'%';
 }
 
@@ -2543,16 +2584,16 @@ function buildSheetTable(data){
         const w=tree[yr].months[mo].weeks[wk];
         moPC+=w.purchaseCount;moPS+=w.purchaseSum;moSC+=w.soldCount;moRev+=w.revenue;moProfit+=w.profit;moMid+=w.priceMid;moLow+=w.priceLow;moShip+=w.shipping;
         const wkRate=w.revenue?Math.round(w.profit/w.revenue*100):null;
-        weekRows+=`<tr class="row-week"><td class="label"></td><td class="label"></td><td class="label indent2">${wk}</td><td>${y(w.purchaseSum)}</td><td>${y(w.revenue)}</td><td class="${negClass(w.profit)}">${y(w.profit)}</td><td>${y(w.priceMid)}</td><td>${y(w.priceLow)}</td><td>${y(w.shipping)}</td><td class="${wkRate!==null?(wkRate<0?'neg':'pos'):''}">${wkRate!==null?wkRate+'%':'-'}</td><td>${w.purchaseCount||'-'}</td><td>${w.soldCount||'-'}</td></tr>`;
+        weekRows+=`<tr class="row-week"><td class="label"></td><td class="label"></td><td class="label indent2">${wk}</td><td>${y(w.purchaseSum)}</td><td>${y(w.revenue)}</td><td class="${negClass(w.profit)}">${y(w.profit)}</td><td class="${negClass(w.revenue-w.purchaseSum)}" style="font-weight:600;">${y(w.revenue-w.purchaseSum)}</td><td>${y(w.priceMid)}</td><td>${y(w.priceLow)}</td><td>${y(w.shipping)}</td><td class="${wkRate!==null?(wkRate<0?'neg':'pos'):''}">${wkRate!==null?wkRate+'%':'-'}</td><td>${w.purchaseCount||'-'}</td><td>${w.soldCount||'-'}</td></tr>`;
       });
       yrPC+=moPC;yrPS+=moPS;yrSC+=moSC;yrRev+=moRev;yrProfit+=moProfit;yrMid+=moMid;yrLow+=moLow;yrShip+=moShip;
       const moRate=moRev?Math.round(moProfit/moRev*100):null;
-      monthRows+=`<tr class="row-month"><td class="label"></td><td class="label indent1">${parseInt(mo)}月</td><td class="label"></td><td>¥${moPS.toLocaleString()}</td><td>¥${moRev.toLocaleString()}</td><td class="${negClass(moProfit)}">¥${moProfit.toLocaleString()}</td><td>¥${moMid.toLocaleString()}</td><td>¥${moLow.toLocaleString()}</td><td>¥${moShip.toLocaleString()}</td><td class="${moRate!==null?(moRate<0?'neg':'pos'):''}">${moRate!==null?moRate+'%':'-'}</td><td>${moPC}</td><td>${moSC}</td></tr>${weekRows}`;
+      monthRows+=`<tr class="row-month"><td class="label"></td><td class="label indent1">${parseInt(mo)}月</td><td class="label"></td><td>¥${moPS.toLocaleString()}</td><td>¥${moRev.toLocaleString()}</td><td class="${negClass(moProfit)}">¥${moProfit.toLocaleString()}</td><td class="${negClass(moRev-moPS)}" style="font-weight:600;">¥${(moRev-moPS).toLocaleString()}</td><td>¥${moMid.toLocaleString()}</td><td>¥${moLow.toLocaleString()}</td><td>¥${moShip.toLocaleString()}</td><td class="${moRate!==null?(moRate<0?'neg':'pos'):''}">${moRate!==null?moRate+'%':'-'}</td><td>${moPC}</td><td>${moSC}</td></tr>${weekRows}`;
     });
     const yrRate=yrRev?Math.round(yrProfit/yrRev*100):null;
-    rows+=`<tr class="row-year"><td class="label">${yr}年</td><td class="label"></td><td class="label"></td><td>¥${yrPS.toLocaleString()}</td><td>¥${yrRev.toLocaleString()}</td><td class="${negClass(yrProfit)}">¥${yrProfit.toLocaleString()}</td><td>¥${yrMid.toLocaleString()}</td><td>¥${yrLow.toLocaleString()}</td><td>¥${yrShip.toLocaleString()}</td><td class="${yrRate!==null?(yrRate<0?'neg':'pos'):''}">${yrRate!==null?yrRate+'%':'-'}</td><td>${yrPC}</td><td>${yrSC}</td></tr>${monthRows}`;
+    rows+=`<tr class="row-year"><td class="label">${yr}年</td><td class="label"></td><td class="label"></td><td>¥${yrPS.toLocaleString()}</td><td>¥${yrRev.toLocaleString()}</td><td class="${negClass(yrProfit)}">¥${yrProfit.toLocaleString()}</td><td class="${negClass(yrRev-yrPS)}" style="font-weight:600;">¥${(yrRev-yrPS).toLocaleString()}</td><td>¥${yrMid.toLocaleString()}</td><td>¥${yrLow.toLocaleString()}</td><td>¥${yrShip.toLocaleString()}</td><td class="${yrRate!==null?(yrRate<0?'neg':'pos'):''}">${yrRate!==null?yrRate+'%':'-'}</td><td>${yrPC}</td><td>${yrSC}</td></tr>${monthRows}`;
   });
-  document.getElementById('salesSheetBody').innerHTML=rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px;font-family:\'Noto Sans JP\',sans-serif;">データなし</td></tr>';
+  document.getElementById('salesSheetBody').innerHTML=rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:24px;font-family:\'Noto Sans JP\',sans-serif;">データなし</td></tr>';
 }
 
 
