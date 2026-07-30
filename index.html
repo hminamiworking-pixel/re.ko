@@ -2152,10 +2152,8 @@ function clearRequiredMarks(fields){
 }
 // 仕入れ登録の必須（写真のみ任意）
 const REQ_REGISTER=[['r_mainCategory','大カテゴリー'],['r_subCategory','中カテゴリー'],['r_purchasePrice','仕入れ価格'],['r_itemCondition','入庫時商品状態'],['r_purchaseSource','仕入れ先'],['r_listingAccount','出品アカウント'],['r_brandName','ブランド名'],['r_itemShape','形状'],['r_freeWord','フリーワード'],['r_priceHigh','販売予定価格（上振れ）'],['r_priceLow','販売予定価格（下振れ）']];
-// 出品準備(STEP2)の固定の必須項目（+ サイズ各欄・カテゴリ別のdetails欄も必須。動的生成のため保存時に判定）
-// シリアル/モデル番号・サイズ・ポケット数・商品タイトルより下の項目は保存時は任意。
-// リペア詳細/気になる状態は保存できるが、AI自動生成の実行には必要（generateAI側でチェック）。
-const REQ_STEP2=[['e_listingDate','出品日'],['e_conditionRank','状態ランク'],['e_material','素材'],['e_color','カラー'],['e_priceHigh','販売予定価格（上振れ）'],['e_priceLow','販売予定価格（下振れ）']];
+// ※出品準備(STEP2)は保存時の必須項目なし（全項目が任意）。
+//   リペア詳細・気になる状態・出品用写真は AI自動生成の実行条件としてのみ必要（generateAI側でチェック）。
 
 // ==================== 新規登録 ====================
 async function saveNewProduct(){
@@ -2204,40 +2202,8 @@ function clearRegisterForm(){document.querySelectorAll('#register input,#registe
 // ==================== ステージ保存 ====================
 async function saveStage(step,nextStep){
   const statusEl=document.getElementById(`e_status${step}`);
-  // 出品準備(STEP2)の必須チェック（シリアル番号・モデル番号・サイズ・ポケット数は任意）
-  if(step===2){
-    const missing=validateRequired(REQ_STEP2);
-    // サイズ（カテゴリ別に動的生成される各欄）
-    const sizeFields=[];
-    document.querySelectorAll('#e_sizeBox .sz-in').forEach(el=>{
-      const lb=(el.dataset.label||'').replace(/_/g,'・');
-      sizeFields.push([el,'サイズ：'+lb]);
-    });
-    // カテゴリ別のdetails（財布=開閉仕様/札入れ数… バッグ=外ポケ/内ポケ）
-    const detailFields=[];
-    const openSel=document.getElementById('dt_openType');
-    if(openSel){
-      const lbl=(document.querySelector('#e_detailsBox .field label')||{}).textContent||'開閉仕様';
-      detailFields.push([openSel,lbl]);
-    }
-    document.querySelectorAll('#e_detailsBox .dt-pk').forEach(el=>{
-      detailFields.push([el,(el.dataset.name||'')+'（数）']);
-    });
-    [...sizeFields,...detailFields].forEach(([el,label])=>{
-      const ok=String(el.value||'').trim()!=='';
-      if(ok){el.style.removeProperty('border-color');el.style.removeProperty('box-shadow');}
-      else{
-        el.style.setProperty('border-color','var(--red)','important');
-        el.style.setProperty('box-shadow','0 0 0 3px rgba(188,48,48,.15)','important');
-        missing.push(label);
-      }
-    });
-    if(missing.length){
-      statusEl.className='status-msg err';
-      statusEl.textContent='未入力があります：'+missing.join('、');
-      return;
-    }
-  }
+  // 出品準備(STEP2)は保存時の必須チェックなし（全項目が任意）
+  // ※リペア詳細・気になる状態は AI自動生成の実行条件としてのみ必要（generateAI側でチェック）
   statusEl.className='status-msg';statusEl.textContent='保存中...';
   let updates={};
   if(step===1){
