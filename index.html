@@ -1167,6 +1167,9 @@ button[onclick="exportProductsCSV()"]{
 <script>
 const SUPABASE_URL='https://pnulmigiszlowqohwfxy.supabase.co';
 const SUPABASE_KEY='sb_publishable_3W_KCCHg4bmdT_1Uz1-Mgw_GwbvL_vs';
+// AI設定
+const AI_MODEL='claude-sonnet-4-5';
+const AI_MAX_IMAGES=3;   // AIに送る出品用写真の枚数
 const CLAUDE_PROXY='https://pnulmigiszlowqohwfxy.supabase.co/functions/v1/claude-proxy';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
@@ -1517,15 +1520,19 @@ async function fetchTrend(){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
       body:JSON.stringify({
-        model:'claude-sonnet-4-5',
+        model:AI_MODEL,
         max_tokens:1000,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:trendPrompt}]
       })
     });
-    const trendData=await trendRes.json();
-    const trendText=(trendData.content||[]).filter(i=>i.type==='text').map(i=>i.text).join('');
-    const trend=JSON.parse(trendText.replace(/```json|```/g,'').trim());
+    const {data:trendData,raw:trendRaw}=await readJsonSafe(trendRes);
+    if(!trendData||!trendData.content) throw new Error(describeApiError(trendData,trendRaw));
+    const trendText=(trendData.content||[]).filter(i=>i.type==='text').map(i=>i.text||'').join('');
+    if(!trendText.trim()) throw new Error('AIから応答がありませんでした。時間をおいて再実行してください。');
+    const tMatch=trendText.replace(/```json|```/g,'').match(/\{[\s\S]*\}/);
+    if(!tMatch) throw new Error('AIの応答を読み取れませんでした。もう一度お試しください。');
+    const trend=JSON.parse(tMatch[0]);
     trend._updatedAt='取得日時：'+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 '+now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0'));
     trendCache=trend;      // 保存で残せるようキャッシュに保持
     renderTrendResult(trend);
@@ -1548,6 +1555,24 @@ async function fetchTrend(){
 function cleanAI(v){
   return String(v||'').trim().replace(/^[\s【「『\[]+/,'').replace(/[\s】」』\]]+$/,'').replace(/\s+/g,' ');
 }
+// APIエラーを分かりやすい日本語に変換
+function describeApiError(data,rawText){
+  const msg=(data&&data.error&&data.error.message)||'';
+  if(/credit balance is too low/i.test(msg)||/credit balance is too low/i.test(rawText||''))
+    return 'AIのクレジット残高が不足しています。Anthropicの請求画面（Plans & Billing）でクレジットを購入してください。';
+  if(/rate limit/i.test(msg)) return 'AIの利用が一時的に混み合っています。少し時間をおいて再実行してください。';
+  if(/overloaded/i.test(msg)) return 'AI側が混雑しています。少し時間をおいて再実行してください。';
+  if(/invalid|authentication|api key/i.test(msg)) return 'AIの認証エラーです。APIキーの設定を確認してください。';
+  if(msg) return msg;
+  if(rawText&&rawText.trim()) return rawText.slice(0,200);
+  return 'AIから応答がありませんでした。時間をおいて再実行してください。';
+}
+// レスポンスを安全にJSON化（空・非JSONでも落ちない）
+async function readJsonSafe(res){
+  const raw=await res.text();
+  try{ return {data:JSON.parse(raw), raw}; }catch(e){ return {data:null, raw}; }
+}
+
 // 200文字以内に収める（文末で自然に切る）
 function limitChars(text,max){
   const t=String(text||'').trim();
@@ -1599,6 +1624,41 @@ function buildProductTitle(r){
   return title;
 }
 
+// 過去の承認済み商品を「お手本」として取得（同カテゴリ優先）。
+// 修正して保存した文章がそのまま蓄積されるため、使うほど自社の文体に寄っていく。
+async function fetchStyleExamples(cat,limit){
+  const cols='product_title,product_description,repair_detail,keywords,sub_category';
+  try{
+    let q=sb.from('products').select(cols)
+      .not('product_description','is',null).neq('product_description','')
+      .order('created_at',{ascending:false})
+      .limit(limit||3);
+    if(cat)q=q.eq('sub_category',cat);
+    let {data,error}=await q;
+    if(error||!data||!data.length){
+      // 同カテゴリに実績がなければカテゴリ問わずで再取得
+      const r=await sb.from('products').select(cols)
+        .not('product_description','is',null).neq('product_description','')
+        .order('created_at',{ascending:false}).limit(limit||3);
+      data=r.data||[];
+    }
+    return data;
+  }catch(e){ console.warn('お手本の取得に失敗',e); return []; }
+}
+// お手本をプロンプト用テキストに整形
+function buildStyleBlock(examples){
+  if(!examples||!examples.length)return '';
+  const body=examples.map((d,i)=>{
+    const parts=[];
+    if(d.product_title)parts.push('タイトル:'+d.product_title);
+    if(d.product_description)parts.push('商品文章:'+d.product_description);
+    if(d.repair_detail)parts.push('リペア内容:'+d.repair_detail);
+    if(d.keywords)parts.push('キーワード:'+d.keywords);
+    return '【例'+(i+1)+'】\n'+parts.join('\n');
+  }).join('\n\n');
+  return '■お手本（自社で実際に使用した過去の出品文。文体・語彙・長さ・言い回しをこれに合わせる。内容そのものは流用しない）\n'+body+'\n\n';
+}
+
 // ==================== AI自動入力 ====================
 async function generateAI(){
   const brand=document.getElementById('e_brandName').value.trim();
@@ -1629,7 +1689,12 @@ async function generateAI(){
     // トレンド検索済みならその注目キーワード・相場をタイトルSEOの材料として渡す
     const trendKw=(trendCache&&Array.isArray(trendCache.hotKeywords))?trendCache.hotKeywords.filter(Boolean):[];
     const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
-    const basePrompt='中古ブランド品ECコピーライター。\n'
+    // 過去の承認済み文章をお手本として取得（学習の代わり）
+    setProgress(25,'過去の出品文を参照中...');
+    const styleExamples=await fetchStyleExamples(document.getElementById('e_subCategory').value,3);
+    const styleBlock=buildStyleBlock(styleExamples);
+
+    const basePrompt=styleBlock+'中古ブランド品ECコピーライター。\n'
       +'禁止：安い/激安/正規品/本物/鑑定済み/保証/人気/定番/ラグジュアリー\n'
       +'productDescription=商品の魅力を伝える説明文。**必ず200文字以内**。状態ランク・シリアル/型番・実寸法・付属品・リペア項目の羅列や転記は書かない。リペア情報が多くても列挙せず雰囲気だけ1文で触れる程度に。\n'
       +'文体ルール：接続詞を不自然に重ねない。「だがしかし」「ただそれでも」「しかしながらただ」等の重複逆接は禁止。逆接は1文に1つまで、自然な日本語で。\n'
@@ -1645,20 +1710,17 @@ async function generateAI(){
       +'JSONのみ返答：{"brandName":"","itemShape":"","keywords":"","titleVariants":[{"writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":""}],"productDescription":"","repairDetail":""}';
 
     const messages=hasPhotos
-      ? [{role:'user',content:[...editListingImages.slice(0,3).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
+      ? [{role:'user',content:[...editListingImages.slice(0,AI_MAX_IMAGES).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
       : [{role:'user',content:basePrompt}];
 
     setProgress(50,'生成中...');
     const aiRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2500,messages})
+      body:JSON.stringify({model:AI_MODEL,max_tokens:2500,messages})
     });
-    const aiData=await aiRes.json();
-    if(!aiData.content){
-      const errMsg=aiData.error?.message||JSON.stringify(aiData);
-      throw new Error('AI生成エラー: '+errMsg);
-    }
+    const {data:aiData,raw:aiRaw}=await readJsonSafe(aiRes);
+    if(!aiData||!aiData.content) throw new Error(describeApiError(aiData,aiRaw));
     const aiText=aiData.content.filter(i=>i.type==='text').map(i=>i.text||'').join('');
     if(!aiText) throw new Error('AI応答が空です');
     const cleaned=aiText.replace(/```json|```/g,'').trim();
