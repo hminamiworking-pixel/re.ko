@@ -690,9 +690,10 @@ button[onclick="exportProductsCSV()"]{
       <input type="text" id="p_brand" placeholder="ブランド" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:130px;outline:none;">
       <input type="text" id="p_shape" placeholder="形状" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:110px;outline:none;">
       <input type="text" id="p_shelf" placeholder="棚番" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:90px;outline:none;">
+      <input type="text" id="p_keyword" placeholder="タイトル内キーワード（例：モノグラム）" oninput="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;width:210px;outline:none;">
       <select id="p_status" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
         <option value="">ステータス：全て</option>
-        <option>仕分け前</option><option>検品</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリオークション</option><option>入金</option>
+        <option>仕分け前</option><option>検品</option><option>リペア前</option><option>外注リペア</option><option>撮影前</option><option>画像加工前</option><option>出品前</option><option>出品中</option><option>発送前</option><option>受け取り評価前</option><option>保管中</option><option>エコオク</option><option>メルカリ1</option><option>メルカリ2</option><option>入金</option>
       </select>
       <select id="p_dateType" onchange="applyProductsFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
         <option value="created_at">仕入れ日</option>
@@ -708,8 +709,8 @@ button[onclick="exportProductsCSV()"]{
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>写真</th><th>No.</th><th>棚番</th><th>ブランド</th><th>形状</th><th>カテゴリー</th><th>仕入れ価格</th><th>ステータス</th><th>操作</th></tr></thead>
-        <tbody id="productsTable"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">読み込み中...</td></tr></tbody>
+        <thead><tr><th>仕入れ日</th><th>写真</th><th>No.</th><th>棚番</th><th>ブランド</th><th>形状</th><th>カテゴリー</th><th>仕入れ価格</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="productsTable"><tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">読み込み中...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -722,6 +723,8 @@ button[onclick="exportProductsCSV()"]{
     <div class="card-title">集計ビュー</div>
     <div class="sales-tabs">
       <button class="sales-tab active" onclick="switchSalesTab('sheet',this)">スプレッドシート</button>
+      <button class="sales-tab" onclick="switchSalesTab('stock',this)">在庫推移</button>
+      <button class="sales-tab" onclick="switchSalesTab('cohort',this)">仕入月別 売却率</button>
       <button class="sales-tab" onclick="switchSalesTab('chart',this)">グラフ</button>
       <button class="sales-tab" onclick="switchSalesTab('list',this)">売却リスト</button>
     </div>
@@ -767,6 +770,55 @@ button[onclick="exportProductsCSV()"]{
       </div>
     </div>
 
+    <!-- STOCK VIEW（スプシ①：在庫推移／全期間） -->
+    <div id="salesStockView" style="display:none;">
+      <div style="margin-bottom:12px;font-size:11px;color:var(--text3);line-height:1.7;">
+        ※在庫＝出品日を迎えており、まだ売却されていない商品（出品中）。金額は<b>下振れ値</b>の合計。<br>
+        ※在庫回転率＝売却点数 ÷ 平均在庫点数。数値は月末に確定します。
+      </div>
+      <div class="ss-wrap">
+        <table class="ss-table">
+          <thead>
+            <tr>
+              <th class="left" style="min-width:90px;">年月</th>
+              <th style="min-width:90px;">期首在庫点数</th>
+              <th style="min-width:110px;">期首在庫金額</th>
+              <th style="min-width:90px;">期末在庫点数</th>
+              <th style="min-width:110px;">期末在庫金額</th>
+              <th style="min-width:90px;">平均在庫点数</th>
+              <th style="min-width:110px;">平均在庫金額</th>
+              <th style="min-width:80px;">売却点数</th>
+              <th style="min-width:90px;">在庫回転率</th>
+            </tr>
+          </thead>
+          <tbody id="stockTableBody"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px;font-family:'Noto Sans JP',sans-serif;">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COHORT VIEW（スプシ②：仕入月別の累計売却率） -->
+    <div id="salesCohortView" style="display:none;">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
+        <select id="cohortYear" onchange="buildCohortTable()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);"></select>
+        <span style="font-size:11px;color:var(--text3);">※仕入れてから何日で何％売れたか（仕入日から30/60/90日以内に売却された割合）。期間が未到来の月は「-」</span>
+      </div>
+      <div class="ss-wrap">
+        <table class="ss-table">
+          <thead>
+            <tr>
+              <th class="left" style="min-width:80px;">仕入月</th>
+              <th style="min-width:80px;">仕入点数</th>
+              <th style="min-width:90px;">30日</th>
+              <th style="min-width:90px;">60日</th>
+              <th style="min-width:90px;">90日</th>
+              <th style="min-width:90px;">累計売却率</th>
+            </tr>
+          </thead>
+          <tbody id="cohortTableBody"><tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;font-family:'Noto Sans JP',sans-serif;">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- CHART VIEW -->
     <div id="salesChartView" style="display:none;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -801,27 +853,25 @@ button[onclick="exportProductsCSV()"]{
       <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">円グラフ</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">当月 回転率（ステータス別）</div>
+          <div style="display:flex;gap:4px;margin-bottom:10px;align-items:center;flex-wrap:wrap;"><button class="sales-tab" id="statusAllBtn" onclick="setPieMode('status','all',this)" style="font-size:11px;padding:4px 10px;">全期間</button><button class="sales-tab active" id="statusCurBtn" onclick="setPieMode('status','current',this)" style="font-size:11px;padding:4px 10px;">当月</button><button class="sales-tab" id="statusSelBtn" onclick="setPieMode('status','select',this)" style="font-size:11px;padding:4px 10px;">各月</button><select id="statusMonth" onchange="setPieMonth('status',this.value)" style="display:none;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);"><option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">回転率（ステータス別）</div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:12px;" id="chartCurrentMonthLabel"></div>
           <div style="position:relative;height:200px;"><canvas id="chartStatusPie"></canvas></div>
         </div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">当月 売却プラットフォーム</div>
+          <div style="display:flex;gap:4px;margin-bottom:10px;align-items:center;flex-wrap:wrap;"><button class="sales-tab" id="platformAllBtn" onclick="setPieMode('platform','all',this)" style="font-size:11px;padding:4px 10px;">全期間</button><button class="sales-tab active" id="platformCurBtn" onclick="setPieMode('platform','current',this)" style="font-size:11px;padding:4px 10px;">当月</button><button class="sales-tab" id="platformSelBtn" onclick="setPieMode('platform','select',this)" style="font-size:11px;padding:4px 10px;">各月</button><select id="platformMonth" onchange="setPieMonth('platform',this.value)" style="display:none;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);"><option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">売却プラットフォーム</div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:12px;" id="chartCurrentMonthLabel2"></div>
           <div style="position:relative;height:200px;"><canvas id="chartPlatformMonthPie"></canvas></div>
         </div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
-          <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;">
-            <button class="sales-tab active" id="destAllBtn" onclick="switchDestMode('all',this)" style="font-size:11px;padding:4px 10px;">全期間</button>
-            <button class="sales-tab" id="destMonthBtn" onclick="switchDestMode('month',this)" style="font-size:11px;padding:4px 10px;">当月</button>
-          </div>
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">売却先（個人・業者）</div>
+          <div style="display:flex;gap:4px;margin-bottom:10px;align-items:center;flex-wrap:wrap;"><button class="sales-tab" id="destAllBtn" onclick="setPieMode('dest','all',this)" style="font-size:11px;padding:4px 10px;">全期間</button><button class="sales-tab active" id="destCurBtn" onclick="setPieMode('dest','current',this)" style="font-size:11px;padding:4px 10px;">当月</button><button class="sales-tab" id="destSelBtn" onclick="setPieMode('dest','select',this)" style="font-size:11px;padding:4px 10px;">各月</button><select id="destMonth" onchange="setPieMonth('dest',this.value)" style="display:none;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);"><option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">売却先（個人・業者）</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px;" id="chartDestLabel"></div>
           <div style="position:relative;height:180px;"><canvas id="chartDestPie"></canvas></div>
         </div>
       </div>
 
       <!-- カテゴリ円グラフ（出品中のみ） -->
-      <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">カテゴリ構成（出品中のみ）</div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">月内前半・後半の売上比較</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;margin-bottom:24px;"><div style="display:flex;gap:4px;margin-bottom:10px;align-items:center;flex-wrap:wrap;"><button class="sales-tab active" id="halfCurBtn" onclick="setHalfMode('current',this)" style="font-size:11px;padding:4px 10px;">当月</button><button class="sales-tab" id="halfSelBtn" onclick="setHalfMode('select',this)" style="font-size:11px;padding:4px 10px;">各月</button><select id="halfMonth" onchange="setHalfMonth(this.value)" style="display:none;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);"><option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">売上（1〜15日 / 16日〜月末）</div><div style="font-size:10px;color:var(--text3);margin-bottom:12px;" id="chartHalfLabel"></div><div style="position:relative;height:220px;"><canvas id="chartHalfPie"></canvas></div></div><div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">カテゴリ構成（出品中のみ）</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;">
           <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">大カテゴリ別</div>
@@ -1371,7 +1421,7 @@ function updateShapeOptions(subCatId,shapeId,keepValue){
   }
 }
 
-const ALL_STATUSES=['仕分け前','検品','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリオークション','入金'];
+const ALL_STATUSES=['仕分け前','検品','リペア前','外注リペア','撮影前','画像加工前','出品前','出品中','発送前','受け取り評価前','保管中','エコオク','メルカリ1','メルカリ2','入金'];
 // ステータスは前に戻さない（保存ボタンで巻き戻るのを防ぐ）
 function advanceStatus(current,target){
   const a=ALL_STATUSES.indexOf(current),b=ALL_STATUSES.indexOf(target);
@@ -1399,12 +1449,12 @@ async function updateStatusInline(sel){
   setTxt('statPurchased',allProductsCache.filter(d=>preList.includes(d.status)).length);
   setTxt('statRepair',allProductsCache.filter(d=>activeList.includes(d.status)).length);
   setTxt('statListing',allProductsCache.filter(d=>d.status==='保管中').length);
-  setTxt('statSold',allProductsCache.filter(d=>['エコオク','メルカリオークション','入金'].includes(d.status)).length);
+  setTxt('statSold',allProductsCache.filter(d=>['エコオク','メルカリ1','メルカリ2','入金'].includes(d.status)).length);
   setTxt('statTotal',allProductsCache.length);
   sel.disabled=false;
 }
 function statusBadge(s){
-  const map={'仕分け前':'badge-gray','検品':'badge-gray','リペア前':'badge-yellow','外注リペア':'badge-yellow','撮影前':'badge-yellow','画像加工前':'badge-yellow','出品前':'badge-yellow','出品中':'badge-blue','発送前':'badge-blue','受け取り評価前':'badge-blue','保管中':'badge-gray','エコオク':'badge-green','メルカリオークション':'badge-green','入金':'badge-green'};
+  const map={'仕分け前':'badge-gray','検品':'badge-gray','リペア前':'badge-yellow','外注リペア':'badge-yellow','撮影前':'badge-yellow','画像加工前':'badge-yellow','出品前':'badge-yellow','出品中':'badge-blue','発送前':'badge-blue','受け取り評価前':'badge-blue','保管中':'badge-gray','エコオク':'badge-green','メルカリ1':'badge-green','メルカリ2':'badge-green','入金':'badge-green'};
   return `<span class="badge ${map[s]||'badge-gray'}">${s||'-'}</span>`;
 }
 function yen(v){return v?'¥'+Number(v).toLocaleString():'-';}
@@ -1457,9 +1507,13 @@ function switchSalesTab(tab,btn){
   document.querySelectorAll('.sales-tabs .sales-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('salesSheetView').style.display=tab==='sheet'?'block':'none';
+  document.getElementById('salesStockView').style.display=tab==='stock'?'block':'none';
+  document.getElementById('salesCohortView').style.display=tab==='cohort'?'block':'none';
   document.getElementById('salesChartView').style.display=tab==='chart'?'block':'none';
   document.getElementById('salesListView').style.display=tab==='list'?'block':'none';
   if(tab==='chart'){if(!chartAllData.length){loadSales().then(()=>redrawAllCharts());}else{redrawAllCharts();}}
+  if(tab==='stock'){buildStockTable();}
+  if(tab==='cohort'){buildCohortYearOptions();buildCohortTable();}
 }
 
 
@@ -1605,7 +1659,7 @@ function buildProductTitle(r){
   const g=id=>(document.getElementById(id)||{}).value||'';
   const wt=cleanAI(r.writingTitle);
   const brand=cleanAI(g('e_brandName')||r.brandName);   // フォームの英語表記を優先
-  const shape=cleanAI(g('e_itemShape')||r.itemShape);
+  const shape=cleanAI(g('e_itemShape')||r.itemShape);   // 形状は日本語のまま（英語化しない）
   const color=g('e_color').trim();
   const size=getTitleSize();
   const segs=[
@@ -1703,7 +1757,7 @@ async function generateAI(){
       +(worryInput?('気になる状態（必ずrepairDetailに反映）：'+worryInput+'\n'):'')
       +'titleVariants=タイトル部品を5パターン（配列）。各要素は{"writingTitle":情景キャッチ14字程度(【】不要),"bigWord":最重要SEO1語,"midWord":中程度,"smallWord":補足,"longTailWord":複合ロングテール}。\n'
       +'SEOワードの絶対ルール：bigWord/midWord/smallWord/longTailWordは**4つとも異なる語**にする。5パターン合計20語も**全て重複させない**（同じ語・同義語の使い回し禁止）。実際に検索されるワードのみ。\n'
-      +'brandName/itemShapeは**英語表記**で返す（例：Louis Vuitton, GUCCI）。カタカナ表記にしない。\n'
+      +'brandNameは**英語表記**で返す（例：Louis Vuitton, GUCCI）。itemShapeは**日本語のまま**（例：二つ折り財布・長財布）。英語にしない。\n'
       +(trendKw.length?('検索トレンドの注目キーワード（優先的にSEOワードへ活用）：'+trendKw.join(' / ')+'\n'):'')
       +'リペア：'+(repairInput||'不明')+' 状態ランク：'+(rankInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
@@ -1730,7 +1784,16 @@ async function generateAI(){
 
     setProgress(90,'反映中...');
     if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
-    if(r.itemShape) document.getElementById('e_itemShape').value=r.itemShape;
+    // 形状はプルダウンの日本語（例：二つ折り財布）を正とする。
+    // AIが英語（Bifold Wallet 等）を返しても上書きしない。空のときだけ、
+    // 中カテゴリの候補に一致する場合に限り採用する。
+    (function(){
+      const shapeEl=document.getElementById('e_itemShape');
+      if(!shapeEl||shapeEl.value)return;
+      const cat=document.getElementById('e_subCategory').value;
+      const list=SHAPE_MAP[cat]||[];
+      if(r.itemShape&&list.includes(r.itemShape))shapeEl.value=r.itemShape;
+    })();
     // タイトル候補5案は buildProductTitle で固定の全角/半角配列に統一して組み立てる
     let variants=Array.isArray(r.titleVariants)&&r.titleVariants.length?r.titleVariants:[r];
     variants=dedupeVariants(variants);   // SEOワードの重複を全体で除去
@@ -1772,7 +1835,53 @@ function buildTitleFormatHint(){
 // ==================== グラフ ====================
 let chartInstances={};
 let chartAllData=[];
-let destMode='all';
+// 円グラフの期間モード（all=全期間 / current=当月 / select=選択月）
+const pieMode={status:'current',platform:'current',dest:'current'};
+const pieMonth={status:null,platform:null,dest:null};
+function setPieMode(key,mode,btn){
+  pieMode[key]=mode;
+  ['All','Cur','Sel'].forEach(sfx=>{const b=document.getElementById(key+sfx+'Btn');if(b)b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  const sel=document.getElementById(key+'Month');
+  if(sel){
+    sel.style.display=(mode==='select')?'inline-block':'none';
+    if(mode==='select'&&!pieMonth[key]){
+      pieMonth[key]=String(new Date().getMonth()+1).padStart(2,'0');
+      sel.value=pieMonth[key];
+    }
+  }
+  redrawPie(key);
+}
+function setPieMonth(key,v){ pieMonth[key]=v; redrawPie(key); }
+function redrawPie(key){
+  if(key==='status')drawStatusPie();
+  else if(key==='platform')drawPlatformMonthPie();
+  else drawDestPie();
+}
+// 対象データの絞り込み（dateField を基準に期間で絞る）
+function filterByPieMode(list,key,dateField){
+  const mode=pieMode[key];
+  if(mode==='all')return list.filter(d=>d[dateField]);
+  const yr=(document.getElementById('chartYearSelect')||{}).value||String(new Date().getFullYear());
+  let mo;
+  if(mode==='current'){
+    const now=new Date();
+    // 当月は「今年の今月」で判定
+    return list.filter(d=>(d[dateField]||'').startsWith(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')));
+  }
+  mo=pieMonth[key]||String(new Date().getMonth()+1).padStart(2,'0');
+  return list.filter(d=>(d[dateField]||'').startsWith(yr+'-'+mo));
+}
+// 期間の表示ラベル
+function pieModeLabel(key){
+  const mode=pieMode[key];
+  if(mode==='all')return '全期間';
+  const now=new Date();
+  if(mode==='current')return now.getFullYear()+'年'+(now.getMonth()+1)+'月（当月）';
+  const yr=(document.getElementById('chartYearSelect')||{}).value||String(now.getFullYear());
+  const mo=pieMonth[key]||String(now.getMonth()+1).padStart(2,'0');
+  return yr+'年'+parseInt(mo)+'月';
+}
 const PIE_COLORS=['#3895da','#34c783','#ffab40','#8b65e6','#ff6378','#36bdd4','#f7a34b','#5dd4b0','#a78bfa'];
 
 function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
@@ -1792,17 +1901,11 @@ function buildYearOptions(data){
   if(current&&[...years].includes(current))sel.value=current;
 }
 
-function switchDestMode(mode,btn){
-  destMode=mode;
-  document.querySelectorAll('#destAllBtn,#destMonthBtn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  drawDestPie();
-}
 
 function redrawAllCharts(){
   drawBarListingSold();drawBarPurchaseTotal();drawBarPurchaseStats();drawBarAvgSale();
   drawStatusAmounts();
-  drawStatusPie();drawPlatformMonthPie();drawDestPie();
+  drawStatusPie();drawPlatformMonthPie();drawDestPie();drawHalfPie();
   drawCategoryPies();
 }
 
@@ -1883,10 +1986,11 @@ function drawBarAvgSale(){
   });
 }
 function drawStatusPie(){
-  const now=new Date();const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('chartCurrentMonthLabel').textContent=`${now.getFullYear()}年${now.getMonth()+1}月`;
+  document.getElementById('chartCurrentMonthLabel').textContent=pieModeLabel('status');
+  // 在庫の状況を見る用途のため、仕入れ日(created_at)基準
+  const target=filterByPieMode(chartAllData,'status','created_at');
   const counts={};
-  chartAllData.forEach(d=>{const cd=(d.created_at||'').slice(0,7);if(cd===yrmo){const s=d.status||'不明';counts[s]=(counts[s]||0)+1;}});
+  target.forEach(d=>{const st=d.status||'不明';counts[st]=(counts[st]||0)+1;});
   const labels=Object.keys(counts);const vals=Object.values(counts);
   destroyChart('chartStatusPie');
   if(!vals.length)return;
@@ -1895,10 +1999,10 @@ function drawStatusPie(){
   });
 }
 function drawPlatformMonthPie(){
-  const now=new Date();const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('chartCurrentMonthLabel2').textContent=`${now.getFullYear()}年${now.getMonth()+1}月`;
+  document.getElementById('chartCurrentMonthLabel2').textContent=pieModeLabel('platform');
+  const target=filterByPieMode(chartAllData,'platform','sold_date');
   const counts={};
-  chartAllData.filter(d=>d.sold_date&&d.sold_date.startsWith(yrmo)).forEach(d=>{const p=d.sold_platform||'不明';counts[p]=(counts[p]||0)+1;});
+  target.forEach(d=>{const pf=d.sold_platform||'不明';counts[pf]=(counts[pf]||0)+1;});
   const labels=Object.keys(counts);const vals=Object.values(counts);
   destroyChart('chartPlatformMonthPie');
   if(!vals.length)return;
@@ -1907,9 +2011,9 @@ function drawPlatformMonthPie(){
   });
 }
 function drawDestPie(){
-  const now=new Date();const yrmo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  let target=chartAllData.filter(d=>d.sold_date);
-  if(destMode==='month')target=target.filter(d=>d.sold_date.startsWith(yrmo));
+  const lb=document.getElementById('chartDestLabel');
+  if(lb)lb.textContent=pieModeLabel('dest');
+  const target=filterByPieMode(chartAllData,'dest','sold_date');
   const counts={};
   target.forEach(d=>{const t=d.sold_to||'不明';counts[t]=(counts[t]||0)+1;});
   const labels=Object.keys(counts);const vals=Object.values(counts);
@@ -1921,6 +2025,47 @@ function drawDestPie(){
 }
 function barOpts(tickCb){
   return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${tickCb(c.parsed.y)}`}}},scales:{x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{font:{size:10},color:'#6b6b65'}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#6b6b65',callback:tickCb}}}};
+}
+// 月内前半(1〜15日)・後半(16日〜月末)の売上比較
+let halfMode='current', halfMonth=null;
+function setHalfMode(mode,btn){
+  halfMode=mode;
+  ['halfCurBtn','halfSelBtn'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  const sel=document.getElementById('halfMonth');
+  if(sel){
+    sel.style.display=(mode==='select')?'inline-block':'none';
+    if(mode==='select'&&!halfMonth){halfMonth=String(new Date().getMonth()+1).padStart(2,'0');sel.value=halfMonth;}
+  }
+  drawHalfPie();
+}
+function setHalfMonth(v){ halfMonth=v; drawHalfPie(); }
+function drawHalfPie(){
+  const now=new Date();
+  let yr,mo;
+  if(halfMode==='current'){ yr=String(now.getFullYear()); mo=String(now.getMonth()+1).padStart(2,'0'); }
+  else{
+    yr=(document.getElementById('chartYearSelect')||{}).value||String(now.getFullYear());
+    mo=halfMonth||String(now.getMonth()+1).padStart(2,'0');
+  }
+  const prefix=yr+'-'+mo;
+  const lastDay=new Date(parseInt(yr),parseInt(mo),0).getDate();
+  const lb=document.getElementById('chartHalfLabel');
+  if(lb)lb.textContent=yr+'年'+parseInt(mo)+'月'+(halfMode==='current'?'（当月）':'')+'　※後半は16〜'+lastDay+'日';
+  let firstHalf=0,secondHalf=0;
+  chartAllData.forEach(d=>{
+    if(!d.sold_date||!d.sold_date.startsWith(prefix))return;
+    const day=parseInt(d.sold_date.slice(8,10));
+    if(day<=15)firstHalf+=d.revenue||0; else secondHalf+=d.revenue||0;
+  });
+  destroyChart('chartHalfPie');
+  if(!firstHalf&&!secondHalf)return;
+  chartInstances['chartHalfPie']=new Chart(document.getElementById('chartHalfPie').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['1〜15日','16〜'+lastDay+'日'],datasets:[{data:[firstHalf,secondHalf],backgroundColor:['#3895da','#ffab40'],borderWidth:1,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},
+      tooltip:{callbacks:{label:c=>{const tot=c.dataset.data.reduce((a,b)=>a+b,0);return c.label+': ¥'+c.parsed.toLocaleString()+' ('+(tot?Math.round(c.parsed/tot*100):0)+'%)';}}}}}
+  });
 }
 function drawCategoryPies(){
   // 出品中ステータスの商品のみ
@@ -2513,7 +2658,7 @@ async function openEdit(id){
   if(data.carrier){const cf=document.getElementById('e_carrier').value;const showBoth=(cf==='yamato'||cf==='sagawa');document.getElementById('e_sizeField').style.display=showBoth?'flex':'none';document.getElementById('e_regionField').style.display=showBoth?'flex':'none';}
   set('e_profitAfterShipping',data.profit_after_shipping);set('e_profitGross',data.profit_gross);set('e_profitRate',data.profit_rate);
   if(data.sold_platform&&FEE_MAP[data.sold_platform]!==undefined){document.getElementById('e_feeRate').value=FEE_MAP[data.sold_platform]+'%';}
-  const stepMap={'仕分け前':1,'検品':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリオークション':3,'入金':3};
+  const stepMap={'仕分け前':1,'検品':1,'リペア前':1,'外注リペア':1,'撮影前':2,'画像加工前':2,'出品前':2,'出品中':3,'発送前':3,'受け取り評価前':3,'保管中':3,'エコオク':3,'メルカリ1':3,'メルカリ2':3,'入金':3};
   switchStep(stepMap[data.status]||1);
   calcEstProfit();
   updateNavButtons();
@@ -2543,7 +2688,7 @@ async function viewProduct(id){
   const gallery=document.getElementById('viewPhotoGallery');gallery.innerHTML='';
   const viewPhotos=(data.listing_photo_urls&&data.listing_photo_urls.length)?data.listing_photo_urls:(data.photo_urls||[]);
   if(Array.isArray(viewPhotos)){viewPhotos.forEach(url=>{const img=document.createElement('img');img.src=url;img.style.cursor='zoom-in';img.onclick=()=>openImageViewer(url);gallery.appendChild(img);});}
-  const fields=[['ブランド名',data.brand_name],['形状',data.item_shape],['ステータス',data.status],['カテゴリー',(data.main_category||'')+' / '+(data.sub_category||'')],['仕入れ価格',data.purchase_price?'¥'+data.purchase_price.toLocaleString():'-'],['仕入れ先',data.purchase_source],['出品アカウント',data.listing_account],['販売予定（上振れ）',data.price_high?'¥'+data.price_high.toLocaleString():'-'],['中央値',data.price_mid?'¥'+data.price_mid.toLocaleString():'-'],['商品タイトル',data.product_title],['商品文章',data.product_description],['売上',data.revenue?'¥'+data.revenue.toLocaleString():'-'],['利益',data.profit_gross?'¥'+data.profit_gross.toLocaleString():'-'],['利益率',data.profit_rate||'-']];
+  const fields=[['ブランド名',data.brand_name],['形状',data.item_shape],['ステータス',data.status],['カテゴリー',(data.main_category||'')+' / '+(data.sub_category||'')],['仕入れ価格',data.purchase_price?'¥'+data.purchase_price.toLocaleString():'-'],['仕入れ先',data.purchase_source],['出品アカウント',data.listing_account],['販売予定（下振れ）',data.price_low?'¥'+data.price_low.toLocaleString():'-'],['中央値',data.price_mid?'¥'+data.price_mid.toLocaleString():'-'],['出品日',data.listing_date||'-'],['商品タイトル',data.product_title],['商品文章',data.product_description],['売上',data.revenue?'¥'+data.revenue.toLocaleString():'-'],['利益',data.profit_gross?'¥'+data.profit_gross.toLocaleString():'-'],['利益率',data.profit_rate||'-']];
   document.getElementById('viewContent').innerHTML='<div class="grid">'+fields.map(([l,v])=>`<div class="field"><label>${l}</label><div class="readonly-field">${v||'-'}</div></div>`).join('')+'</div>';
   document.getElementById('viewModal').classList.add('open');
 }
@@ -2672,6 +2817,132 @@ function buildSheetTable(data){
 }
 
 
+// ==================== スプシ①：在庫推移（全期間） ====================
+// 在庫＝「出品日 <= その日」かつ「未売却 or 売却日 > その日」の商品（＝出品中）。
+// 金額は下振れ値(price_low)の合計。ステータスには履歴がないため日付で判定する。
+function stockAt(dateStr){
+  let cnt=0,amt=0;
+  salesRawData.forEach(d=>{
+    const ld=(d.listing_date||'').slice(0,10);
+    if(!ld||ld>dateStr)return;                 // まだ出品していない
+    const sd=(d.sold_date||'').slice(0,10);
+    if(sd&&sd<=dateStr)return;                 // すでに売却済み
+    cnt++; amt+=d.price_low||0;
+  });
+  return {cnt,amt};
+}
+// データが存在する年月を古い順に列挙
+function stockMonths(){
+  const set=new Set();
+  salesRawData.forEach(d=>{
+    [d.listing_date,d.sold_date,d.created_at].forEach(v=>{
+      if(v)set.add(String(v).slice(0,7));
+    });
+  });
+  return [...set].filter(Boolean).sort();
+}
+function buildStockTable(){
+  const tb=document.getElementById('stockTableBody'); if(!tb)return;
+  const y=v=>'¥'+Math.round(v||0).toLocaleString();
+  const today=new Date().toISOString().slice(0,10);
+  const months=stockMonths();
+  let rows='';
+  let curYear=null, yc={openCnt:0,openAmt:0,closeCnt:0,closeAmt:0,sold:0,first:true};
+  const flushYear=()=>{
+    if(curYear===null)return;
+    const avgCnt=(yc.openCnt+yc.closeCnt)/2;
+    const avgAmt=(yc.openAmt+yc.closeAmt)/2;
+    const tr=avgCnt?(yc.sold/avgCnt*100):null;
+    rows+=`<tr class="row-year"><td class="label">${curYear}年 合計</td>`
+      +`<td>${yc.openCnt}</td><td>${y(yc.openAmt)}</td>`
+      +`<td>${yc.closeCnt}</td><td>${y(yc.closeAmt)}</td>`
+      +`<td>${avgCnt.toFixed(1)}</td><td>${y(avgAmt)}</td>`
+      +`<td>${yc.sold}</td>`
+      +`<td class="${tr!==null?'pos':''}">${tr!==null?tr.toFixed(1)+'%':'-'}</td></tr>`;
+  };
+  months.forEach(ym=>{
+    const yr=ym.slice(0,4), mo=ym.slice(5,7);
+    if(curYear!==yr){ flushYear(); curYear=yr; yc={openCnt:0,openAmt:0,closeCnt:0,closeAmt:0,sold:0,first:true}; }
+    const lastDay=new Date(parseInt(yr),parseInt(mo),0).getDate();
+    const monthEnd=`${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
+    // 期首＝前月末時点の在庫（繰越）
+    const prevEnd=new Date(parseInt(yr),parseInt(mo)-1,0).toISOString().slice(0,10);
+    const open=stockAt(prevEnd);
+    // 期末＝当月末時点（未来なら本日時点）
+    const close=stockAt(monthEnd>today?today:monthEnd);
+    const avgCnt=(open.cnt+close.cnt)/2;
+    const avgAmt=(open.amt+close.amt)/2;
+    // 売却点数＝当月に売却され、ステータスが入金のもの
+    let sold=0;
+    salesRawData.forEach(d=>{
+      if((d.sold_date||'').startsWith(ym)&&d.status==='入金')sold++;
+    });
+    const turnover=avgCnt?(sold/avgCnt*100):null;
+    const isFuture=`${yr}-${mo}-01`>today;
+    if(isFuture)return;
+    // 年合計：期首は年内最初の月、期末は年内最後の月の値を採用
+    if(yc.first){ yc.openCnt=open.cnt; yc.openAmt=open.amt; yc.first=false; }
+    yc.closeCnt=close.cnt; yc.closeAmt=close.amt; yc.sold+=sold;
+    const pending=monthEnd>today?'<span style="font-size:9px;color:var(--text3);">（確定前）</span>':'';
+    rows+=`<tr class="row-month"><td class="label">${yr}年${parseInt(mo)}月${pending}</td>`
+      +`<td>${open.cnt}</td><td>${y(open.amt)}</td>`
+      +`<td>${close.cnt}</td><td>${y(close.amt)}</td>`
+      +`<td>${avgCnt.toFixed(1)}</td><td>${y(avgAmt)}</td>`
+      +`<td>${sold}</td>`
+      +`<td class="${turnover!==null?'pos':''}">${turnover!==null?turnover.toFixed(1)+'%':'-'}</td></tr>`;
+  });
+  flushYear();
+  tb.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px;font-family:\'Noto Sans JP\',sans-serif;">データなし</td></tr>';
+}
+
+// ==================== スプシ②：仕入月別の累計売却率 ====================
+function stockYearsFromData(){
+  const ys=new Set();
+  salesRawData.forEach(d=>{ if(d.created_at)ys.add(String(d.created_at).slice(0,4)); });
+  if(!ys.size)ys.add(String(new Date().getFullYear()));
+  return [...ys].sort((a,b)=>b-a);
+}
+function buildCohortYearOptions(){
+  const sel=document.getElementById('cohortYear'); if(!sel)return;
+  const years=stockYearsFromData(); const prev=sel.value;
+  sel.innerHTML=years.map(y=>`<option value="${y}">${y}年</option>`).join('');
+  sel.value=(prev&&years.includes(prev))?prev:years[0];
+}
+function buildCohortTable(){
+  const sel=document.getElementById('cohortYear');
+  const yr=sel?sel.value:String(new Date().getFullYear());
+  const tb=document.getElementById('cohortTableBody'); if(!tb)return;
+  const now=new Date();
+  let rows='';
+  for(let m=1;m<=12;m++){
+    const mo=String(m).padStart(2,'0');
+    const prefix=`${yr}-${mo}`;
+    const items=salesRawData.filter(d=>(d.created_at||'').startsWith(prefix));
+    if(!items.length)continue;
+    // 各商品の「仕入れから売却までの日数」
+    const spans=items.map(d=>{
+      if(!d.sold_date)return null;
+      const c=new Date((d.created_at||'').slice(0,10));
+      const sdt=new Date(d.sold_date);
+      return Math.floor((sdt-c)/86400000);
+    });
+    // その月の月末（＝最も遅い仕入れ日）から N日経過しているか
+    const lastDay=new Date(parseInt(yr),m,0);
+    const cell=(n)=>{
+      const elapsed=Math.floor((now-lastDay)/86400000);
+      if(elapsed<n)return '-';                        // まだN日経っていない
+      const cnt=spans.filter(v=>v!==null&&v<=n).length;
+      return (cnt/items.length*100).toFixed(0)+'%';
+    };
+    const totalSold=spans.filter(v=>v!==null).length;
+    const totalRate=(totalSold/items.length*100).toFixed(0)+'%';
+    rows+=`<tr class="row-month"><td class="label">${m}月</td><td>${items.length}</td>`
+      +`<td>${cell(30)}</td><td>${cell(60)}</td><td>${cell(90)}</td>`
+      +`<td class="pos">${totalRate}</td></tr>`;
+  }
+  tb.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;font-family:\'Noto Sans JP\',sans-serif;">データなし</td></tr>';
+}
+
 // ==================== 出品テンプレート ====================
 // ==================== 出品テンプレート（全カテゴリ汎用・PDF反映）====================
 function buildListingTemplate(d){
@@ -2782,7 +3053,7 @@ async function loadDashboard(){
   document.getElementById('statPurchased').textContent=data.filter(d=>preList.includes(d.status)).length;
   document.getElementById('statRepair').textContent=data.filter(d=>activeList.includes(d.status)).length;
   document.getElementById('statListing').textContent=data.filter(d=>d.status==='保管中').length;
-  document.getElementById('statSold').textContent=data.filter(d=>['エコオク','メルカリオークション','入金'].includes(d.status)).length;
+  document.getElementById('statSold').textContent=data.filter(d=>['エコオク','メルカリ1','メルカリ2','入金'].includes(d.status)).length;
   const totalProfit=data.reduce((s,d)=>s+(d.profit_gross||0),0);
   document.getElementById('statProfit').textContent='¥'+totalProfit.toLocaleString();
   buildDashYearOptions(data);
@@ -2799,8 +3070,9 @@ function renderProductsTable(data){
     // 出品用写真が入るまでは仕入れ時写真の1枚目、入ったら出品用の1枚目に切替
     const photo=(d.listing_photo_urls&&d.listing_photo_urls.length)?d.listing_photo_urls[0]:((d.photo_urls&&d.photo_urls.length)?d.photo_urls[0]:'');
     const thumb=photo?`<img class="thumb" src="${photo}" style="cursor:zoom-in;" onclick="openImageViewer('${photo}')">`:`<div class="thumb-empty">なし</div>`;
-    return `<tr><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
-  }).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
+    const pdate=(d.created_at||'').slice(0,10);
+    return `<tr><td style="font-size:11px;white-space:nowrap;">${pdate||'-'}</td><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
+  }).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
 }
 // ==================== 画像拡大ビューア ====================
 function openImageViewer(url){
@@ -2820,6 +3092,7 @@ function filterProducts(list){
   const shape=(document.getElementById('p_shape').value||'').trim().toLowerCase();
   const shelf=(document.getElementById('p_shelf').value||'').trim().toLowerCase();
   const status=document.getElementById('p_status').value;
+  const kw=(document.getElementById('p_keyword').value||'').trim().toLowerCase();
   const dateType=document.getElementById('p_dateType').value; // created_at|listing_date|sold_date
   const df=document.getElementById('p_dateFrom').value;
   const dt=document.getElementById('p_dateTo').value;
@@ -2829,6 +3102,10 @@ function filterProducts(list){
     if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
     if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
     if(status&&d.status!==status)return false;
+    if(kw){
+      const hay=[(d.product_title||''),(d.keywords||''),(d.free_word||'')].join(' ').toLowerCase();
+      if(!hay.includes(kw))return false;
+    }
     if(df||dt){
       const raw=(d[dateType]||'').slice(0,10);
       if(!raw)return false;
@@ -2842,12 +3119,12 @@ function applyProductsFilter(){
   renderProductsTable(filterProducts(productsListCache));
 }
 function clearProductsFilter(){
-  ['p_no','p_brand','p_shape','p_shelf','p_dateFrom','p_dateTo'].forEach(id=>document.getElementById(id).value='');
+  ['p_no','p_brand','p_shape','p_shelf','p_keyword','p_dateFrom','p_dateTo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('p_status').value='';
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date','product_no',false);if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date,product_title,keywords,free_word','product_no',false);if(!data)return;
   productsListCache=data;
   applyProductsFilter();
 }
