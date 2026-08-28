@@ -1525,6 +1525,12 @@ function setProgress(pct, msg){
   if(msg){const s=document.getElementById('e_aiStatus');s.className='status-msg';s.textContent=msg;}
 }
 
+// AIプロキシ用：ログイン中のアクセストークンを取得（未ログインならnull）
+async function getAccessToken(){
+  const {data:{session}}=await sb.auth.getSession();
+  return session?session.access_token:null;
+}
+
 // トレンド結果をパネルに描画（新規取得・保存済み復元で共用）
 function renderTrendResult(trend){
   if(!trend)return;
@@ -1572,7 +1578,7 @@ async function fetchTrend(){
 
     const trendRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken()||SUPABASE_KEY)},
       body:JSON.stringify({
         model:AI_MODEL,
         max_tokens:1000,
@@ -1770,7 +1776,7 @@ async function generateAI(){
     setProgress(50,'生成中...');
     const aiRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken()||SUPABASE_KEY)},
       body:JSON.stringify({model:AI_MODEL,max_tokens:2500,messages})
     });
     const {data:aiData,raw:aiRaw}=await readJsonSafe(aiRes);
@@ -3246,7 +3252,29 @@ async function loadProducts(){
 
 // ==================== CSVエクスポート ====================
 async function exportProductsCSV(){
-  const cols=[['No.','product_no'],['棚番','shelf_no'],['ブランド','brand_name'],['形状','item_shape'],['大カテゴリ','main_category'],['中カテゴリ','sub_category'],['フリーワード','free_word'],['仕入れ価格','purchase_price'],['仕入れ先','purchase_source'],['出品アカウント','listing_account'],['ステータス','status'],['上振れ','price_high'],['下振れ','price_low'],['中央値','price_mid'],['出品日','listing_date'],['売却日','sold_date'],['売却PF','sold_platform'],['売れ先','sold_to'],['売上','revenue'],['送料','shipping_cost'],['利益','profit_gross'],['利益(送料込)','profit_after_shipping'],['利益率','profit_rate'],['登録日','created_at']];
+  // CSV出力する項目（クライアント指定の順序）
+  const cols=[
+    ['商品ID','product_no'],
+    ['入庫日(仕入れ日)','created_at'],
+    ['ブランド','brand_name'],
+    ['大カテゴリー','main_category'],
+    ['中カテゴリー','sub_category'],
+    ['商品キーワード','keywords'],
+    ['商品名','product_title'],
+    ['商品文章','product_description'],
+    ['入庫状態','item_condition'],
+    ['仕入れ価格','purchase_price'],
+    ['仕入先','purchase_source'],
+    ['出品日','listing_date'],
+    ['売却日','sold_date'],
+    ['販売先(売れ先)','sold_to'],
+    ['売却価格','revenue'],
+    ['利益','profit_gross'],
+    ['利益率','profit_rate'],
+    ['上振れ','price_high'],
+    ['中央値','price_mid'],
+    ['下振れ','price_low']
+  ];
   // 一覧キャッシュはCSVに必要な列を持っていないため、エクスポート時に全列を取得し直す
   const data=await fetchAllRows(cols.map(c=>c[1]).join(','),'product_no',false);
   if(!data){alert('データの取得に失敗しました。時間をおいて再度お試しください');return;}
