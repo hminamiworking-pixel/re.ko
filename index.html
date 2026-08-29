@@ -707,6 +707,7 @@ button[onclick="exportProductsCSV()"]{
       <span id="p_count" style="font-size:11px;color:var(--text3);"></span>
       <button onclick="exportProductsCSV()" style="padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--teal);cursor:pointer;font-weight:600;margin-left:auto;">CSVエクスポート</button>
     </div>
+    <div id="p_drillChip" style="display:none;margin-bottom:12px;"></div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>仕入れ日</th><th>写真</th><th>No.</th><th>棚番</th><th>ブランド</th><th>形状</th><th>カテゴリー</th><th>仕入れ価格</th><th>ステータス</th><th>操作</th></tr></thead>
@@ -1499,7 +1500,8 @@ function showPage(id,btn){
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
   if(id==='dashboard')loadDashboard();
-  if(id==='products')loadProducts();
+  // メニューから普通に開いたときはグラフ由来の絞り込みを解除する（絞り込まれたままになるのを防ぐ）
+  if(id==='products'){drillFilter=null;renderDrillChip();loadProducts();}
   if(id==='sales')loadSales();
 }
 
@@ -2139,34 +2141,68 @@ function pieOpts(drill,mode){
   };
 }
 // 円グラフのセグメントをクリック → 商品一覧を絞り込んで表示
+const DRILL_FIELD   ={status:'status',platform:'sold_platform',soldTo:'sold_to',mainCat:'main_category',subCat:'sub_category'};
+const DRILL_NAME    ={status:'ステータス',platform:'売却プラットフォーム',soldTo:'売却先',mainCat:'大カテゴリー',subCat:'中カテゴリー'};
+const DRILL_PIEKEY  ={status:'status',platform:'platform',soldTo:'dest'};
+const DRILL_DATEFLD ={status:'created_at',platform:'sold_date',soldTo:'sold_date'};
+// グラフ側で選んでいる期間（全期間/各月/当月）を日付レンジに変換
+function pieRange(key){
+  const mode=pieMode[key];
+  if(mode==='all')return null;
+  const now=new Date();
+  let yr,mo;
+  if(mode==='current'){ yr=now.getFullYear(); mo=now.getMonth()+1; }
+  else{
+    yr=parseInt((document.getElementById('chartYearSelect')||{}).value||now.getFullYear(),10);
+    mo=parseInt(pieMonth[key]||(now.getMonth()+1),10);
+  }
+  const mm=String(mo).padStart(2,'0');
+  const last=new Date(yr,mo,0).getDate();
+  return {from:`${yr}-${mm}-01`,to:`${yr}-${mm}-${String(last).padStart(2,'0')}`};
+}
 function drillToProducts(drill,label){
-  if(!label||label==='不明'||label==='未設定')return;
+  const field=drill&&DRILL_FIELD[drill.type];
+  if(!field)return;
+  const isBlank=(!label||label==='不明'||label==='未設定');
   // 商品一覧へ移動
   const navBtns=document.querySelectorAll('.nav-btn');
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   navBtns.forEach(b=>b.classList.remove('active'));
   document.getElementById('products').classList.add('active');
   navBtns.forEach(b=>{ if((b.getAttribute('onclick')||'').includes("'products'")) b.classList.add('active'); });
-  // 一旦フィルタをクリア
+  window.scrollTo(0,0);
+  // 一旦フィルタをクリアしてから、グラフの条件だけを反映する
   ['p_no','p_brand','p_shape','p_shelf','p_keyword','p_dateFrom','p_dateTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('p_status').value='';
-  const apply=()=>{
-    if(drill.type==='status'){
-      const sel=document.getElementById('p_status');
-      if([...sel.options].some(o=>o.value===label))sel.value=label;
-    }else if(drill.type==='mainCat'||drill.type==='subCat'){
-      // カテゴリはキーワード欄では引けないため、一覧側で直接絞り込む
-      pendingCatFilter={type:drill.type,value:label};
-    }else{
-      // 売却PF・売却先は該当データを絞り込む
-      pendingSaleFilter={type:drill.type,value:label};
-    }
-    applyProductsFilter();
-  };
-  if(!productsListCache.length){ loadProducts().then(apply); } else { apply(); }
+  document.getElementById('p_dateType').value='created_at';
+  drillFilter={field,value:label,isBlank,name:DRILL_NAME[drill.type],requireDate:''};
+  const pk=DRILL_PIEKEY[drill.type];
+  if(pk){
+    // 期間もグラフの選択に合わせる（日付欄に入るので画面上でも分かる）
+    const dfld=DRILL_DATEFLD[drill.type];
+    document.getElementById('p_dateType').value=dfld;
+    const r=pieRange(pk);
+    if(r){document.getElementById('p_dateFrom').value=r.from;document.getElementById('p_dateTo').value=r.to;}
+    else drillFilter.requireDate=dfld; // 全期間＝グラフと同じく日付ありのみ
+  }else{
+    // カテゴリ円グラフは「出品中」だけを集計しているので合わせる
+    document.getElementById('p_status').value='出品中';
+  }
+  renderDrillChip();
+  if(!productsListCache.length){ loadProducts(); } else { applyProductsFilter(); }
 }
 // 円グラフ由来の絞り込み条件（商品一覧のフィルタで併用）
-let pendingCatFilter=null, pendingSaleFilter=null;
+let drillFilter=null;
+function renderDrillChip(){
+  const el=document.getElementById('p_drillChip');
+  if(!el)return;
+  if(!drillFilter){el.style.display='none';el.innerHTML='';return;}
+  const h=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const val=drillFilter.isBlank?'未設定':drillFilter.value;
+  el.style.display='block';
+  el.innerHTML=`<span style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;background:rgba(56,149,218,0.12);border:1px solid rgba(56,149,218,0.35);font-size:12px;color:var(--text);">グラフから絞り込み中：${h(drillFilter.name)}「${h(val)}」<button onclick="clearDrillFilter()" title="この絞り込みを解除" style="border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:15px;line-height:1;padding:0;">×</button></span>`;
+}
+function clearDrillFilter(){ drillFilter=null; renderDrillChip(); applyProductsFilter(); }
 
 // ==================== ステップ切り替え ====================
 function switchStep(n){
@@ -3214,13 +3250,11 @@ function filterProducts(list){
     if(shape&&!(d.item_shape||'').toLowerCase().includes(shape))return false;
     if(shelf&&!(d.shelf_no||'').toLowerCase().includes(shelf))return false;
     if(status&&d.status!==status)return false;
-    if(pendingCatFilter){
-      const v=(pendingCatFilter.type==='mainCat')?(d.main_category||''):(d.sub_category||'');
-      if(v!==pendingCatFilter.value)return false;
-    }
-    if(pendingSaleFilter){
-      const v=(pendingSaleFilter.type==='platform')?(d.sold_platform||''):(d.sold_to||'');
-      if(v!==pendingSaleFilter.value)return false;
+    if(drillFilter){
+      const v=d[drillFilter.field]||'';
+      if(drillFilter.isBlank){ if(v)return false; }
+      else if(v!==drillFilter.value)return false;
+      if(drillFilter.requireDate&&!(d[drillFilter.requireDate]||''))return false;
     }
     if(kw){
       const hay=[(d.product_title||''),(d.keywords||''),(d.free_word||'')].join(' ').toLowerCase();
@@ -3239,13 +3273,13 @@ function applyProductsFilter(){
   renderProductsTable(filterProducts(productsListCache));
 }
 function clearProductsFilter(){
-  pendingCatFilter=null; pendingSaleFilter=null;
+  drillFilter=null; renderDrillChip();
   ['p_no','p_brand','p_shape','p_shelf','p_keyword','p_dateFrom','p_dateTo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('p_status').value='';
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date,product_title,keywords,free_word','product_no',false);if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date,product_title,keywords,free_word,sold_platform,sold_to','product_no',false);if(!data)return;
   productsListCache=data;
   applyProductsFilter();
 }
