@@ -1592,9 +1592,7 @@ async function fetchTrend(){
     if(!trendData||!trendData.content) throw new Error(describeApiError(trendData,trendRaw));
     const trendText=(trendData.content||[]).filter(i=>i.type==='text').map(i=>i.text||'').join('');
     if(!trendText.trim()) throw new Error('AIから応答がありませんでした。時間をおいて再実行してください。');
-    const tMatch=trendText.replace(/```json|```/g,'').match(/\{[\s\S]*\}/);
-    if(!tMatch) throw new Error('AIの応答を読み取れませんでした。もう一度お試しください。');
-    const trend=JSON.parse(tMatch[0]);
+    const trend=parseAiJson(trendText);
     trend._updatedAt='取得日時：'+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 '+now.getHours()+':'+(String(now.getMinutes()).padStart(2,'0'));
     trendCache=trend;      // 保存で残せるようキャッシュに保持
     renderTrendResult(trend);
@@ -1633,6 +1631,69 @@ function describeApiError(data,rawText){
 async function readJsonSafe(res){
   const raw=await res.text();
   try{ return {data:JSON.parse(raw), raw}; }catch(e){ return {data:null, raw}; }
+}
+// ==================== AI応答のJSONを安全に読む ====================
+// AIは文章中に " を素で入れたり（例：ロゴの"GG"柄）、途中で切れたりすることがあり、
+// そのままだと JSON.parse が落ちて「Expected ',' or '}'」等のエラーになる。
+// 文字列の中の裸の " をエスケープし、閉じ忘れも補ってから読み直す。
+function repairJsonString(s){
+  let out='',inStr=false,esc=false;const stack=[];
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(esc){out+=c;esc=false;continue;}
+    if(c==='\\'){out+=c;esc=true;continue;}
+    if(inStr){
+      if(c==='"'){
+        // 次の非空白が , : } ] なら本物の閉じ引用符。それ以外は文章中の " とみなす
+        let j=i+1;while(j<s.length&&/\s/.test(s[j]))j++;
+        const n=s[j];
+        if(n===undefined||n===','||n===':'||n==='}'||n===']'){inStr=false;out+=c;}
+        else out+='\\"';
+      }
+      else if(c==='\n')out+='\\n';
+      else if(c==='\r')out+='\\r';
+      else if(c==='\t')out+='\\t';
+      else out+=c;
+      continue;
+    }
+    if(c==='"'){inStr=true;out+=c;continue;}
+    if(c==='{'||c==='[')stack.push(c==='{'?'}':']');
+    else if(c==='}'||c===']')stack.pop();
+    out+=c;
+  }
+  // 途中で切れている場合の補完
+  if(inStr)out+='"';
+  out=out.replace(/,\s*$/,'');
+  while(stack.length)out+=stack.pop();
+  return out;
+}
+// 最初の { から対応する } までを取り出す（後ろに説明文が付いていても切り出せる）
+function extractJsonBlock(text){
+  const s=text.indexOf('{');
+  if(s<0)return '';
+  let depth=0,inStr=false,esc=false;
+  for(let i=s;i<text.length;i++){
+    const c=text[i];
+    if(esc){esc=false;continue;}
+    if(c==='\\'){esc=true;continue;}
+    if(c==='"'){inStr=!inStr;continue;}
+    if(inStr)continue;
+    if(c==='{')depth++;
+    else if(c==='}'){depth--;if(!depth)return text.slice(s,i+1);}
+  }
+  return text.slice(s);
+}
+function parseAiJson(text){
+  const cleaned=String(text||'').replace(/```json|```/g,'').trim();
+  const cands=[];
+  const bal=extractJsonBlock(cleaned);if(bal)cands.push(bal);
+  const greedy=cleaned.match(/\{[\s\S]*\}/);if(greedy&&greedy[0]!==bal)cands.push(greedy[0]);
+  if(!cands.length)throw new Error('AIの応答を読み取れませんでした。もう一度お試しください。');
+  for(const c of cands){
+    try{return JSON.parse(c);}catch(e){}
+    try{const fixed=JSON.parse(repairJsonString(c));console.warn('AI応答のJSONを自動補正しました');return fixed;}catch(e){}
+  }
+  throw new Error('AIの応答を読み取れませんでした。もう一度「AI自動入力」を押してください。');
 }
 
 // 200文字以内に収める（文末で自然に切る）
@@ -1769,6 +1830,7 @@ async function generateAI(){
       +(trendKw.length?('検索トレンドの注目キーワード（優先的にSEOワードへ活用）：'+trendKw.join(' / ')+'\n'):'')
       +'リペア：'+(repairInput||'不明')+' 状態ランク：'+(rankInput||'不明')+'\n'
       +(hasPhotos?'':'対象：'+brandInfo+'\n')
+      +'JSON書式の厳守：値の中では半角のダブルクォート(")を絶対に使わない。強調は「」で囲む。改行も入れない。JSON以外の文章は一切書かない。\n'
       +'JSONのみ返答：{"brandName":"","itemShape":"","keywords":"","titleVariants":[{"writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":""}],"productDescription":"","repairDetail":""}';
 
     const messages=hasPhotos
@@ -1785,10 +1847,7 @@ async function generateAI(){
     if(!aiData||!aiData.content) throw new Error(describeApiError(aiData,aiRaw));
     const aiText=aiData.content.filter(i=>i.type==='text').map(i=>i.text||'').join('');
     if(!aiText) throw new Error('AI応答が空です');
-    const cleaned=aiText.replace(/```json|```/g,'').trim();
-    const jsonMatch=cleaned.match(/\{[\s\S]*\}/);
-    if(!jsonMatch) throw new Error('JSONが見つかりません');
-    const r=JSON.parse(jsonMatch[0]);
+    const r=parseAiJson(aiText);
 
     setProgress(90,'反映中...');
     if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
