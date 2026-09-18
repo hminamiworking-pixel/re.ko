@@ -883,6 +883,20 @@ button[onclick="exportProductsCSV()"]{
           <div style="position:relative;height:220px;"><canvas id="chartSubCatPie"></canvas></div>
         </div>
       </div>
+
+      <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">仕入先別の利益率</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;margin-bottom:24px;">
+        <div style="display:flex;gap:4px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
+          <button class="sales-tab active" id="srcAllBtn" onclick="setSourceMode('all',this)" style="font-size:11px;padding:4px 10px;">全期間</button>
+          <button class="sales-tab" id="srcCurBtn" onclick="setSourceMode('current',this)" style="font-size:11px;padding:4px 10px;">当月</button>
+          <button class="sales-tab" id="srcSelBtn" onclick="setSourceMode('select',this)" style="font-size:11px;padding:4px 10px;">各月</button>
+          <select id="sourceMonth" onchange="setSourceMonth(this.value)" style="display:none;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);"><option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:12px;" id="chartSourceLabel"></div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">売却済み（入金）の商品が対象。利益率 ＝ 純利益の合計 ÷ 売上の合計</div>
+        <div style="position:relative;height:240px;"><canvas id="chartSourceProfit"></canvas></div>
+        <div id="sourceProfitTable" style="margin-top:12px;"></div>
+      </div>
     </div>
 
     <!-- LIST VIEW -->
@@ -1236,7 +1250,7 @@ let trendCache=null; // トレンド検索結果を保持
 const BRAND_LIST=['Louis Vuitton','GUCCI','COACH','DIESEL','genten','PRADA','CHANEL','FENDI','PORTER','IL BISONTE','BURBERRY','Dakota','BOTTEGA VENETA','SALON DE ALFURD','Christian Dior','CITIZEN','Vivienne Westwood','CASIO','POLO RALPH LAUREN','russet','VERSACE','CELINE','Cartier','SEIKO','BALENCIAGA','HYSTERIC GLAMOUR','GIANNI CHIARINI','Tory Burch','COMME des GARÇONS','MICHAEL KORS','OLD COACH','Longchamp','MIU MIU','MARC JACOBS','agnès b.','kate spade','ATAO','FURLA','Samantha Thavasa','MARC BY MARC JACOBS','JIMMY CHOO','HERMÈS','LeSportsac','adidas','MCM','LOEWE','Ferragamo','AMERI','Chloé','GIANNI VERSACE','marimekko','Maison Margiela','LANVIN','UNITED ARROWS','Yohji Yamamoto','Alexander Wang','Orobianco','Calvin Klein','Kitamura','KENZO','Saint Laurent','Stella McCartney','Tiffany & Co.','TUMI','NUMBER (N)INE','Bally','Valentino Garavani','REGAL','ARMANI','ETRO','Onitsuka Tiger','Clarks','GREGORY','Samantha Vega','See By Chloé','JOURNAL STANDARD','TOMORROWLAND','NIKE','New Balance','FEILER','FOSSIL','MACKINTOSH','MARY QUANT','MYSTERY RANCH','LACOSTE','LANCEL','Levi\'s','Ray-Ban','Wacoal','YONEX','Other'];
 // 中カテゴリ → 形状候補
 const SHAPE_MAP={
-  '財布':['二つ折り財布','三つ折り財布','長財布','マネークリップ','コインケース','カードケース','フラグメントケース','チェーンウォレット','キーケース','シガレットケース'],
+  '財布':['二つ折り財布','三つ折り財布','長財布','マネークリップ','コインケース','カードケース','フラグメントケース','チェーンウォレット','キーケース','シガレットケース','手帳カバー'],
   'バッグ':['トートバッグ','ショルダーバッグ','ハンドバッグ','クラッチバッグ','ボストンバッグ','リュック/バックパック','ボディバッグ','ウエストバッグ','ミニバッグ','ブリーフケース','ビジネスバッグ'],
   'サングラス/メガネ':['サングラス','メガネ'],
   'ベルト':['ベルト','サスペンダー'],
@@ -1266,8 +1280,10 @@ const MAT_SUNGLASS=['チタン','メタル','プラスチック','ウッド','�
 const MAT_WATCH=['ステンレス','チタン','樹脂（レジン）','セラミック','カーボン','アルミニウム','ゴールド10金','ゴールド18金','ラバー（シリコン）','シルバー925','PVDコーティング','サファイアガラス','ミネラルガラス','キャンバス','その他','不明'];
 const MAT_APPAREL=['コットン（綿）','リネン（麻）','シルク（絹）','ポリエステル','ポリウレタン','キュプラ','ウール（毛、羊毛含む）','レーヨン','カシミア','アルパカ','アンゴラ','モヘア','ラビット（ウサギ）','フォックス（きつね）','ラクーン（たぬき）','ナイロン','ポリノジック','リヨセル','アセテート','トリアセテート','プロミックス','アクリル','牛革','羊革','山羊革','鹿革','ダウン','フェザー','不明'];
 const MAT_ACCESSORY=['真鍮','チタン','シルバー925','シルバー1000','シルバー950','ステンレス','ゴールド10金','ゴールド18金','プラチナ','本革','PVC','ナイロン','ポリエステル','キャンバス','牛革（カウレザー）','馬革（ホースハイド）','豚革（ピッグスキン）','山羊革（ゴートスキン）','ワニ（クロコダイルレザー）','ウール（毛、羊毛含む）','トカゲ（リザードレザー）','蛇（パイソンレザー）','ダチョウ（オーストリッチレザー）','鹿革（ディアスキンレザー）','ミンク','エキゾチックレザー','エナメル革（パテントレザー）','合皮','その他','不明'];
+// 財布・バッグのみ スエードを追加（Lark依頼 2026-09-17）
+const MAT_LEATHER_BAG=(function(){const a=MAT_LEATHER.slice();a.splice(a.indexOf('その他'),0,'スエード（スウェード）');return a;})();
 const MATERIAL_MAP={
-  '財布':MAT_LEATHER,'バッグ':MAT_LEATHER,'ベルト':MAT_LEATHER,'靴':MAT_LEATHER,'その他小物':MAT_LEATHER,
+  '財布':MAT_LEATHER_BAG,'バッグ':MAT_LEATHER_BAG,'ベルト':MAT_LEATHER,'靴':MAT_LEATHER,'その他小物':MAT_LEATHER,
   'サングラス/メガネ':MAT_SUNGLASS,
   '腕時計':MAT_WATCH,
   'ファッション小物':MAT_APPAREL,'アパレル':MAT_APPAREL,'帽子':MAT_APPAREL,'ネクタイ':MAT_APPAREL,
@@ -1275,12 +1291,14 @@ const MATERIAL_MAP={
 };
 
 // --- 付属品（チェックボックス）---
-const ACC_COMMON=['タグ','ギャランティカード','保存袋','説明書','箱','ショルダーストラップ','ショルダーストラップ（社外品）','チャーム','ポーチ','リボン','本体のみ'];
-const ACC_SUNGLASS=['タグ','ギャランティカード','保存袋','説明書','箱','メガネケース','メガネ拭き','チャーム','ポーチ','リボン','本体のみ'];
-const ACC_APPAREL=['タグ','ギャランティカード','保存袋','説明書','箱','替えボタン','共布','補修用生地','予備のスパンコール・ビーズ','ベルト','ウエストリボン','腰紐','フード','ファー','インナーベスト','肩パッド','サスペンダー','ブローチ','コサージュ','チェーン','ハンガー','ガーメントケース','本体のみ'];
-const ACC_SHOES=['タグ','ギャランティカード','保存袋','説明書','箱','シューズ用クロス','替え紐','シューツリー','替えヒール／替えトップリフト','替えストラップ','予備ビジュー・装飾パーツ','中敷き','本体のみ'];
-const ACC_WATCH=['箱','内箱','保存袋','タグ','コマ・予備コマ','取扱説明書','保証書（国内）','保証書（国際）','調整工具','ピローホルダー','保管袋','充電器','本体のみ'];
-const ACCESSORY_MAP={'サングラス/メガネ':ACC_SUNGLASS,'アパレル':ACC_APPAREL,'靴':ACC_SHOES,'腕時計':ACC_WATCH};
+const ACC_COMMON=['タグ','ギャランティカード','保存袋','説明書','箱','ショルダーストラップ','ショルダーストラップ（社外品）','チャーム','ポーチ','リボン','インボイス','レシート','本体のみ'];
+const ACC_SUNGLASS=['タグ','ギャランティカード','保存袋','説明書','箱','メガネケース','メガネ拭き','チャーム','ポーチ','リボン','インボイス','レシート','本体のみ'];
+const ACC_APPAREL=['タグ','ギャランティカード','保存袋','説明書','箱','替えボタン','共布','補修用生地','予備のスパンコール・ビーズ','ベルト','ウエストリボン','腰紐','フード','ファー','インナーベスト','肩パッド','サスペンダー','ブローチ','コサージュ','チェーン','ハンガー','ガーメントケース','インボイス','レシート','本体のみ'];
+const ACC_SHOES=['タグ','ギャランティカード','保存袋','説明書','箱','シューズ用クロス','替え紐','シューツリー','替えヒール／替えトップリフト','替えストラップ','予備ビジュー・装飾パーツ','中敷き','インボイス','レシート','本体のみ'];
+const ACC_WATCH=['箱','内箱','保存袋','タグ','コマ・予備コマ','取扱説明書','保証書（国内）','保証書（国際）','調整工具','ピローホルダー','保管袋','充電器','インボイス','レシート','本体のみ'];
+// バッグのみ 鍵・クロシェットを追加（Lark依頼 2026-08-31）
+const ACC_BAG=(function(){const a=ACC_COMMON.slice();a.splice(a.indexOf('インボイス'),0,'鍵','クロシェット');return a;})();
+const ACCESSORY_MAP={'バッグ':ACC_BAG,'サングラス/メガネ':ACC_SUNGLASS,'アパレル':ACC_APPAREL,'靴':ACC_SHOES,'腕時計':ACC_WATCH};
 function accessoryList(cat){return ACCESSORY_MAP[cat]||ACC_COMMON;}
 
 // --- リペア（チェックボックス）---
@@ -1368,7 +1386,7 @@ function getTitleSize(){
 // 財布・バッグのみ【details】（構造情報）をテンプレ内に編集可能テキストとして出力
 // --- 財布・バッグの【details】専用入力（開閉仕様・ポケット）---
 const DETAIL_SCHEMA={
-  '財布':{openLabel:'開閉仕様',openOpts:['ラウンドファスナー','L字ファスナー','フラップ（かぶせ）','スナップボタン','Wホック','がま口','ベルト開閉','プッシュロック式','オープン開閉','ダブルファスナー'],pockets:['札入れ','小銭入れ','カードポケット']},
+  '財布':{openLabel:'開閉仕様',openOpts:['ラウンドファスナー','L字ファスナー','フラップ（かぶせ）','スナップボタン','Wホック','がま口','ベルト開閉','プッシュロック式','オープン開閉','ダブルファスナー','ファスナー','クリップ式','ターンロック'],pockets:['札入れ','小銭入れ','カードポケット']},
   'バッグ':{openLabel:null,openOpts:[],pockets:['外ポケット','内ポケット']}
 };
 function renderDetailsOptions(cat,saved){
@@ -1984,6 +2002,84 @@ function redrawAllCharts(){
   drawStatusAmounts();
   drawStatusPie();drawPlatformMonthPie();drawDestPie();drawHalfPie();
   drawCategoryPies();
+  drawSourceProfit();
+}
+
+// ==================== 仕入先別の利益率 ====================
+// 利益率＝純利益(profit_gross)の合計 ÷ 売上(revenue)の合計。商品ごとの率の単純平均ではなく
+// 金額ベースで出すため、少額商品の極端な率に引きずられない。
+let sourceMode='all', sourceMonth=null;
+function setSourceMode(mode,btn){
+  sourceMode=mode;
+  ['srcAllBtn','srcCurBtn','srcSelBtn'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  const sel=document.getElementById('sourceMonth');
+  if(sel){
+    sel.style.display=(mode==='select')?'inline-block':'none';
+    if(mode==='select'&&!sourceMonth){sourceMonth=String(new Date().getMonth()+1).padStart(2,'0');sel.value=sourceMonth;}
+  }
+  drawSourceProfit();
+}
+function setSourceMonth(v){ sourceMonth=v; drawSourceProfit(); }
+function drawSourceProfit(){
+  const now=new Date();
+  const lb=document.getElementById('chartSourceLabel');
+  let target=chartAllData.filter(d=>d.status==='入金'&&d.sold_date);
+  if(sourceMode==='all'){
+    if(lb)lb.textContent='全期間';
+  }else{
+    let yr,mo;
+    if(sourceMode==='current'){ yr=String(now.getFullYear()); mo=String(now.getMonth()+1).padStart(2,'0'); }
+    else{
+      yr=(document.getElementById('chartYearSelect')||{}).value||String(now.getFullYear());
+      mo=sourceMonth||String(now.getMonth()+1).padStart(2,'0');
+    }
+    const prefix=yr+'-'+mo;
+    target=target.filter(d=>(d.sold_date||'').startsWith(prefix));
+    if(lb)lb.textContent=yr+'年'+parseInt(mo)+'月'+(sourceMode==='current'?'（当月）':'');
+  }
+  const agg={};
+  target.forEach(d=>{
+    const src=d.purchase_source||'未設定';
+    if(!agg[src])agg[src]={rev:0,profit:0,cost:0,count:0};
+    agg[src].rev+=d.revenue||0;
+    agg[src].profit+=d.profit_gross||0;
+    agg[src].cost+=d.purchase_price||0;
+    agg[src].count++;
+  });
+  // 利益率の高い順に並べる
+  const rows=Object.keys(agg).map(k=>{
+    const a=agg[k];
+    return {src:k,rate:a.rev?(a.profit/a.rev*100):0,rev:a.rev,profit:a.profit,cost:a.cost,count:a.count};
+  }).sort((a,b)=>b.rate-a.rate);
+  destroyChart('chartSourceProfit');
+  const tbl=document.getElementById('sourceProfitTable');
+  if(!rows.length){
+    if(tbl)tbl.innerHTML='<div style="text-align:center;color:var(--text3);font-size:11px;padding:16px;">この期間に売却済みの商品がありません</div>';
+    return;
+  }
+  chartInstances['chartSourceProfit']=new Chart(document.getElementById('chartSourceProfit').getContext('2d'),{
+    type:'bar',
+    data:{labels:rows.map(r=>r.src),datasets:[{
+      label:'利益率',data:rows.map(r=>Math.round(r.rate*10)/10),
+      backgroundColor:rows.map(r=>r.rate<0?'rgba(255,99,120,0.85)':'rgba(52,199,131,0.85)'),borderRadius:3
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>{
+          const r=rows[c.dataIndex];
+          return ['利益率: '+(Math.round(r.rate*10)/10)+'%','売上: ¥'+Math.round(r.rev).toLocaleString(),'純利益: ¥'+Math.round(r.profit).toLocaleString(),'売却数: '+r.count+'点'];
+        }}}},
+      scales:{x:{grid:{color:'rgba(0,0,0,0.03)'},ticks:{font:{size:10},color:'#6b6b65',autoSkip:false,maxRotation:45,minRotation:0}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#6b6b65',callback:v=>v+'%'}}}
+    }
+  });
+  if(tbl){
+    const h=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    tbl.innerHTML='<div class="table-wrap"><table><thead><tr><th>仕入先</th><th>売却数</th><th>売上</th><th>仕入</th><th>純利益</th><th>利益率</th></tr></thead><tbody>'
+      +rows.map(r=>'<tr><td>'+h(r.src)+'</td><td>'+r.count+'点</td><td>¥'+Math.round(r.rev).toLocaleString()+'</td><td>¥'+Math.round(r.cost).toLocaleString()+'</td><td'+(r.profit<0?' style="color:var(--red);"':'')+'>¥'+Math.round(r.profit).toLocaleString()+'</td><td'+(r.rate<0?' style="color:var(--red);"':'')+'>'+(Math.round(r.rate*10)/10)+'%</td></tr>').join('')
+      +'</tbody></table></div>';
+  }
 }
 
 // ステータス別：下振れ値・中央値・売却金額(送料なし)・仕入れ価格の合計を棒グラフで
@@ -3415,7 +3511,7 @@ function getMonthWeek(dateStr){const d=new Date(dateStr);return Math.ceil(d.getD
 function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.getFullYear(),0,1);return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);}
 
 async function loadSales(){
-  const data=await fetchAllRows('id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category','created_at',true);if(!data)return;
+  const data=await fetchAllRows('id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category,purchase_source','created_at',true);if(!data)return;
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
