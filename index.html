@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Re：居</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -561,10 +561,14 @@ button[onclick="exportProductsCSV()"]{
 </head>
 <body>
 <!-- ログイン画面 -->
+<div id="sessionBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:450;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:#fff4e0;border-bottom:1px solid #f0c987;color:#6b4a12;font-size:12px;font-family:'Noto Sans JP',sans-serif;">
+  <span>ログイン状態を回復しています…（スリープ復帰の直後は、通信が安定するまで最大1分ほどかかります）</span>
+  <button type="button" onclick="setSessionBanner(false);promptRelogin();" style="padding:4px 10px;border:1px solid #d9a441;border-radius:6px;background:#fff;color:#6b4a12;font-size:12px;cursor:pointer;">今すぐ再ログイン</button>
+</div>
 <div class="auth-overlay" id="authOverlay" style="display:none;">
   <div class="auth-card">
     <h2>Re：居</h2>
-    <p class="sub">ログインしてください</p>
+    <p class="sub" id="authSub">ログインしてください</p>
     <form onsubmit="doLogin(event)">
       <label>メールアドレス</label>
       <input type="email" id="authEmail" autocomplete="username" required>
@@ -714,6 +718,9 @@ button[onclick="exportProductsCSV()"]{
         <tbody id="productsTable"><tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">読み込み中...</td></tr></tbody>
       </table>
     </div>
+    <div id="p_more" style="display:none;text-align:center;margin-top:14px;">
+      <button id="p_moreBtn" type="button" onclick="showMoreProducts()" style="padding:8px 18px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text2);cursor:pointer;">さらに表示</button>
+    </div>
   </div>
 </div>
 
@@ -733,7 +740,7 @@ button[onclick="exportProductsCSV()"]{
     <!-- SHEET VIEW -->
     <div id="salesSheetView">
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
-        <select id="sf_year" onchange="applySheetFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
+        <select id="sf_year" onchange="sheetYearChosen=this.value;applySheetFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
           <option value="">年：全て</option>
         </select>
         <select id="sf_month" onchange="applySheetFilter()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--surface);">
@@ -1236,7 +1243,61 @@ const SUPABASE_KEY='sb_publishable_3W_KCCHg4bmdT_1Uz1-Mgw_GwbvL_vs';
 const AI_MODEL='claude-sonnet-4-5';
 const AI_MAX_IMAGES=3;   // AIに送る出品用写真の枚数
 const CLAUDE_PROXY='https://pnulmigiszlowqohwfxy.supabase.co/functions/v1/claude-proxy';
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// ==================== ログイン状態のガード（端末の切替・スリープ復帰対策）====================
+// Supabaseはログインが切れていても「エラーなし」で応答する（読み込み＝0件、保存＝何も書き込まれず成功扱い）。
+// スマホのスリープ復帰直後などは通信が戻る前にログインの更新が失敗し、ライブラリはその後1分間再試行しない。
+// その間の操作が「未ログイン」のまま送られて、空の画面や保存の取りこぼしが起きていた。
+// そこでDB・画像への通信は、必ず有効なログインを確認してから送る（復旧待ち→だめなら再ログインを促す）。
+const AUTH_STORAGE_KEY='sb-'+new URL(SUPABASE_URL).hostname.split('.')[0]+'-auth-token';
+function hasStoredSession(){
+  try{const v=JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)||'null');return !!(v&&v.refresh_token);}catch(e){return false;}
+}
+function authOverlayOpen(){const o=document.getElementById('authOverlay');return !!(o&&o.style.display==='flex');}
+function setSessionBanner(on){
+  const b=document.getElementById('sessionBanner');
+  if(b)b.style.display=on?'flex':'none';
+}
+// 有効なログインを返す。一時的な失敗なら自動復旧を待ち（最大約75秒）、
+// それでも戻らなければ再ログイン画面を出して、ログインされるまで待つ（保存などはその後そのまま続行される）
+let sessionWaiter=null;
+function ensureSession(){
+  if(sessionWaiter)return sessionWaiter;
+  sessionWaiter=(async()=>{
+    // 通信断の間はライブラリ側が最大30秒ほど再試行してから返るため、
+    // 1.5秒以上かかったら先に「回復中」を表示して、止まって見えないようにする
+    const bannerTimer=setTimeout(()=>{if(hasStoredSession()&&!authOverlayOpen())setSessionBanner(true);},1500);
+    let {data:{session}}=await sb.auth.getSession();
+    clearTimeout(bannerTimer);
+    if(session){setSessionBanner(false);return session;}
+    const until=Date.now()+75000;
+    if(hasStoredSession()&&!authOverlayOpen())setSessionBanner(true);
+    for(;;){
+      if(!authOverlayOpen()&&(!hasStoredSession()||Date.now()>=until)){setSessionBanner(false);promptRelogin();}
+      await new Promise(r=>setTimeout(r,2000));
+      ({data:{session}}=await sb.auth.getSession());
+      if(session){setSessionBanner(false);return session;}
+    }
+  })().finally(()=>{sessionWaiter=null;});
+  return sessionWaiter;
+}
+// ログイン処理以外の通信（DB・画像ストレージ）は、送る直前に最新のログイン情報を付け直す
+async function guardedFetch(input,init){
+  const url=typeof input==='string'?input:((input&&input.url)||String(input));
+  if(url.indexOf('/auth/v1/')!==-1)return fetch(input,init);
+  const session=await ensureSession();
+  const headers=new Headers((init&&init.headers)||((typeof Request!=='undefined'&&input instanceof Request)?input.headers:undefined));
+  headers.set('Authorization','Bearer '+session.access_token);
+  return fetch(input,Object.assign({},init,{headers}));
+}
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:guardedFetch}});
+// 更新が実際に反映されたかまで確認する（0件＝他の端末で削除済みなど。成功と誤表示しないため）
+async function updateProductRow(id,payload){
+  await ensureSession();
+  const {data,error}=await sb.from('products').update(payload).eq('id',id).select('id');
+  if(error)return {error};
+  if(!data||!data.length)return {error:{message:'保存できませんでした。この商品は他の端末で削除された可能性があります。一覧を再読み込みしてください'}};
+  return {error:null};
+}
 
 let registerImages=[];
 let editingId=null;
@@ -1455,7 +1516,7 @@ async function updateStatusInline(sel){
   const newStatus=sel.value;
   sel.disabled=true;
   const prevStatus=(productsListCache.find(d=>d.id===id)||{}).status||'';
-  const {error}=await sb.from('products').update({status:newStatus}).eq('id',id);
+  const {error}=await updateProductRow(id,{status:newStatus});
   if(error){alert('更新失敗: '+error.message);sel.value=prevStatus;sel.disabled=false;return;} // 失敗時は表示を元に戻す
   // 全キャッシュを同期更新（一覧・ダッシュボード・売上で値がズレないように）
   [allProductsCache,productsListCache,dashChartData,chartAllData,salesRawData].forEach(cache=>{
@@ -1547,8 +1608,8 @@ function setProgress(pct, msg){
 
 // AIプロキシ用：ログイン中のアクセストークンを取得（未ログインならnull）
 async function getAccessToken(){
-  const {data:{session}}=await sb.auth.getSession();
-  return session?session.access_token:null;
+  const session=await ensureSession();
+  return session.access_token;
 }
 
 // トレンド結果をパネルに描画（新規取得・保存済み復元で共用）
@@ -1598,7 +1659,7 @@ async function fetchTrend(){
 
     const trendRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken()||SUPABASE_KEY)},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken())},
       body:JSON.stringify({
         model:AI_MODEL,
         max_tokens:1000,
@@ -1858,7 +1919,7 @@ async function generateAI(){
     setProgress(50,'生成中...');
     const aiRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken()||SUPABASE_KEY)},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken())},
       body:JSON.stringify({model:AI_MODEL,max_tokens:2500,messages})
     });
     const {data:aiData,raw:aiRaw}=await readJsonSafe(aiRes);
@@ -2561,15 +2622,16 @@ async function deletePhoto(type, index, productId){
   const {data} = await sb.from('products').select(col).eq('id', productId).single();
   if(!data) return;
   const urls = data[col] || [];
-  // Storage上のファイルも削除（URLの場合）
+  // 先にDBから外す（DB更新に失敗したのにファイルだけ消えて画像が壊れるのを防ぐ）
   const url = urls[index];
+  const newUrls = urls.filter((_,i)=>i!==index);
+  const {error:upErr} = await updateProductRow(productId,{[col]: newUrls.length ? newUrls : null});
+  if(upErr){ alert('写真の削除を保存できませんでした: '+upErr.message); return; }
+  // Storage上のファイルも削除（URLの場合）
   if(url && url.includes('product-images')){
     const path = url.split('/product-images/')[1];
     if(path) await sb.storage.from('product-images').remove([decodeURIComponent(path)]);
   }
-  // 配列から削除してDB更新
-  const newUrls = urls.filter((_,i)=>i!==index);
-  await sb.from('products').update({[col]: newUrls.length ? newUrls : null}).eq('id', productId);
   // currentEditDataも更新して再描画（移動ボタン付き）
   currentEditData[col] = newUrls;
   redrawEditGallery(type,newUrls);
@@ -2578,14 +2640,50 @@ async function deletePhoto(type, index, productId){
 // ==================== 全件取得（1000行制限対策） ====================
 // supabase-jsは1クエリ最大1000行しか返さないため、rangeでページングして全件取得する
 async function fetchAllRows(cols,orderCol,asc){
-  const PAGE=1000;const all=[];
-  for(let from=0;;from+=PAGE){
-    const {data,error}=await sb.from('products').select(cols).order(orderCol,{ascending:asc}).range(from,from+PAGE-1);
-    if(error){console.error('fetchAllRows error:',error);return null;}
-    all.push(...(data||[]));
-    if(!data||data.length<PAGE)return all;
+  await ensureSession();   // 先に確認（復帰直後の待ち時間に「回復中」を表示するため）
+  // supabase-jsは1クエリ最大1000行。以前は1000行ずつ順番に取っていたため、
+  // 件数が増えるほど往復（1回 約0.6秒）が積み重なっていた。前回の件数から必要なページ数を見込み、同時に取得する
+  const PAGE=1000;
+  const q=(from,withCount)=>sb.from('products').select(cols,withCount?{count:'exact'}:undefined).order(orderCol,{ascending:asc}).range(from,from+PAGE-1);
+  let guess=0;try{guess=parseInt(localStorage.getItem('reko_row_count')||'0',10)||0;}catch(e){}
+  const pages=Math.max(1,Math.ceil(guess/PAGE));
+  let res=await Promise.all(Array.from({length:pages},(_,i)=>q(i*PAGE,i===0)));
+  const bad=res.find(r=>r.error);if(bad){console.error('fetchAllRows error:',bad.error);return null;}
+  const total=(typeof res[0].count==='number')?res[0].count:null;
+  if(total!==null){
+    // 見込みより増えていた分だけ、追加でまとめて取得
+    if(total>pages*PAGE){
+      const more=await Promise.all(Array.from({length:Math.ceil((total-pages*PAGE)/PAGE)},(_,i)=>q((pages+i)*PAGE,false)));
+      const bad2=more.find(r=>r.error);if(bad2){console.error('fetchAllRows error:',bad2.error);return null;}
+      res=res.concat(more);
+    }
+    try{localStorage.setItem('reko_row_count',String(total));}catch(e){}
+  }else{
+    // 件数が取れなかった場合は従来どおり順番に取得
+    for(let from=pages*PAGE;res[res.length-1].data&&res[res.length-1].data.length===PAGE;from+=PAGE){
+      const r=await q(from,false);if(r.error){console.error('fetchAllRows error:',r.error);return null;}
+      res.push(r);
+    }
   }
+  return res.reduce((a,r)=>a.concat(r.data||[]),[]);
 }
+
+// ===== 画面データのキャッシュ（前回データを即表示 → 裏で最新を取得し、変化があった時だけ描き直す）=====
+// 画面を切り替えるたびに全件を取り直して待たせていたのを、2回目以降は待ち時間なしで表示する。
+// 最新化は毎回行うため、他の端末での変更もこれまで通り反映される。
+const viewCache={};
+async function loadView(key,cols,orderCol,asc,render){
+  const cached=viewCache[key];
+  if(cached)render(cached.rows,false);
+  const fresh=await fetchAllRows(cols,orderCol,asc);
+  if(!fresh)return;
+  const sig=JSON.stringify(fresh);
+  if(cached&&JSON.stringify(cached.rows)===sig)return;   // 変化なし（この端末での変更は反映済み）
+  viewCache[key]={rows:fresh};
+  render(fresh,!!cached);
+}
+// 保存・削除の直後は前回データを出さず、最新を取り直す
+function invalidateViews(){Object.keys(viewCache).forEach(k=>delete viewCache[k]);}
 
 // ==================== 商品No採番 ====================
 // ※同時登録の競合に備え、DB側で product_no にUNIQUE制約を付けること：
@@ -2679,6 +2777,7 @@ async function saveNewProduct(){
   if(btn)btn.disabled=true;
   status.className='status-msg';status.textContent='保存中...';
   try{
+    await ensureSession();
     const rPh=Number(document.getElementById('r_priceHigh').value)||null;
     const rPl=Number(document.getElementById('r_priceLow').value)||null;
     const rMid=rPh&&rPl?Math.round((rPh+rPl)/2):null;
@@ -2697,7 +2796,7 @@ async function saveNewProduct(){
       status.textContent='写真をアップロード中...';
       const imgs=registerImages.map(url=>{const[h,b]=url.split(',');return{base64:b,type:h.match(/:(.*?);/)?.[1]||'image/jpeg'};});
       const photoUrls=await uploadImagesToStorage(imgs,productNo,'purchase');
-      if(photoUrls.length)await sb.from('products').update({photo_urls:photoUrls}).eq('id',insertedRow.id);
+      if(photoUrls.length){const {error:phErr}=await updateProductRow(insertedRow.id,{photo_urls:photoUrls});if(phErr)throw new Error('商品は登録されましたが（No.'+productNo+'）、写真の保存に失敗しました：'+phErr.message);}
     }
     status.className='status-msg ok';status.textContent=`登録完了（No.${productNo}）`;
     setTimeout(()=>status.textContent='',4000);
@@ -2776,7 +2875,7 @@ async function saveStage(step,nextStep){
     if(nextStep)setTimeout(()=>switchStep(nextStep),600);
     return;
   }
-  const {error}=await sb.from('products').update(payload).eq('id',editingId);
+  const {error}=await updateProductRow(editingId,payload);
   if(error){statusEl.className='status-msg err';statusEl.textContent='エラー: '+error.message;}
   else{
     statusEl.className='status-msg ok';statusEl.textContent='保存しました';
@@ -2844,7 +2943,7 @@ async function reorderPhoto(type,from,to){
   if(from<0||from>=urls.length||to<0||to>=urls.length)return;
   const [moved]=urls.splice(from,1);
   urls.splice(to,0,moved);
-  const {error}=await sb.from('products').update({[col]:urls}).eq('id',editingId);
+  const {error}=await updateProductRow(editingId,{[col]:urls});
   if(error){alert('並べ替えの保存に失敗しました: '+error.message);return;}
   currentEditData[col]=urls;
   redrawEditGallery(type,urls);
@@ -2856,7 +2955,7 @@ async function movePhoto(type,index,dir){
   const j=index+dir;
   if(j<0||j>=urls.length)return;
   [urls[index],urls[j]]=[urls[j],urls[index]];
-  const {error}=await sb.from('products').update({[col]:urls}).eq('id',editingId);
+  const {error}=await updateProductRow(editingId,{[col]:urls});
   if(error){alert('並べ替えの保存に失敗しました: '+error.message);return;}
   currentEditData[col]=urls;
   redrawEditGallery(type,urls);
@@ -2999,11 +3098,12 @@ async function viewProduct(id){
 // ==================== 削除 ====================
 async function deleteProduct(id,no){
   if(!confirm(`No.${no} を削除しますか？`))return;
+  await ensureSession();
   // 削除できたか確認するため .select() で削除済み行を受け取る
   const {data,error}=await sb.from('products').delete().eq('id',id).select();
   if(error){alert('削除に失敗しました: '+error.message+'\n（DB側のRLSでDELETEが許可されていない可能性があります）');return;}
-  if(!data||data.length===0){alert('削除できませんでした（対象0件）。\nSupabaseのRLSでDELETEポリシーが無い可能性が高いです。');return;}
-  loadProducts();
+  if(!data||data.length===0){alert('削除できませんでした（対象0件）。\n他の端末で既に削除された可能性があります。一覧を再読み込みします。');invalidateViews();loadProducts();return;}
+  invalidateViews();loadProducts();
 }
 
 // ==================== ダッシュボード売上グラフ ====================
@@ -3049,10 +3149,17 @@ function drawDashCharts(){drawDashMonthlyChart();drawDashDailyChart();}
 
 // ==================== シートフィルター ====================
 let salesRawData=[];
+// スプシは今年のみを初期表示し、年の切り替えで昨年以前も見られるようにする（null＝まだ手で選んでいない）
+let sheetYearChosen=null;
 function buildSheetYearOptions(data){
-  const years=new Set();data.forEach(d=>{if(d.created_at)years.add(d.created_at.slice(0,4));if(d.sold_date)years.add(d.sold_date.slice(0,4));});
-  const sel=document.getElementById('sf_year');sel.innerHTML='<option value="">年：全て</option>';
+  const curYear=String(new Date().getFullYear());
+  const years=new Set([curYear]);   // 今年は必ず選択肢に含める
+  data.forEach(d=>{if(d.created_at)years.add(d.created_at.slice(0,4));if(d.sold_date)years.add(d.sold_date.slice(0,4));});
+  const sel=document.getElementById('sf_year');sel.innerHTML='';
   [...years].sort((a,b)=>b-a).forEach(y=>{const opt=document.createElement('option');opt.value=y;opt.textContent=y+'年';sel.appendChild(opt);});
+  const all=document.createElement('option');all.value='';all.textContent='全期間';sel.appendChild(all);
+  // 手で選んだ年は描き直しても保つ。まだ選んでいなければ今年
+  sel.value=(sheetYearChosen!==null&&(sheetYearChosen===''||years.has(sheetYearChosen)))?sheetYearChosen:curYear;
 }
 function applySheetFilter(){
   const yr=document.getElementById('sf_year').value;const mo=document.getElementById('sf_month').value;
@@ -3067,7 +3174,7 @@ function applySheetFilter(){
   });
   buildSheetTable(filtered);
 }
-function clearSheetFilter(){document.getElementById('sf_year').value='';document.getElementById('sf_month').value='';buildSheetTable(salesRawData);}
+function clearSheetFilter(){sheetYearChosen=null;document.getElementById('sf_year').value=String(new Date().getFullYear());document.getElementById('sf_month').value='';applySheetFilter();}
 
 function buildSheetTable(data){
   const y=v=>v?'¥'+v.toLocaleString():'-';
@@ -3347,7 +3454,9 @@ function setupTemplateListeners(){
 // ==================== ダッシュボード ====================
 let dashChartData=[];
 async function loadDashboard(){
-  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,sold_date,revenue,profit_gross','product_no',false);if(!data)return;
+  await loadView('dashboard','id,product_no,brand_name,item_shape,shelf_no,status,created_at,listing_date,sold_date,revenue,profit_gross','product_no',false,renderDashboard);
+}
+function renderDashboard(data){
   allProductsCache=data;
   dashChartData=data;
   document.getElementById('statTotal').textContent=data.length;
@@ -3366,16 +3475,44 @@ async function loadDashboard(){
 // ==================== 商品一覧 ====================
 let productsListCache=[];
 let productsViewCache=[];   // 画面に表示中（フィルタ後）の並び。編集モーダルの前後移動で使う
-function renderProductsTable(data){
+// ① 一覧は100件ずつ描画（以前は全件を一度に描画し、3,000件規模で数秒かかっていた）
+//   絞り込み・検索・CSVは今まで通り全件が対象。下までスクロールすると自動で続きを表示する。
+const PRODUCTS_PAGE=100;
+let productsShown=PRODUCTS_PAGE;
+function productRowHtml(d){
+  // 出品用写真が入るまでは仕入れ時写真の1枚目、入ったら出品用の1枚目に切替
+  const photo=(d.listing_photo_urls&&d.listing_photo_urls.length)?d.listing_photo_urls[0]:((d.photo_urls&&d.photo_urls.length)?d.photo_urls[0]:'');
+  const thumb=photo?`<img class="thumb" src="${photo}" loading="lazy" decoding="async" style="cursor:zoom-in;" onclick="openImageViewer('${photo}')">`:`<div class="thumb-empty">なし</div>`;
+  const pdate=(d.created_at||'').slice(0,10);
+  return `<tr><td style="font-size:11px;white-space:nowrap;">${pdate||'-'}</td><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
+}
+function renderProductsTable(data,keepShown){
   productsViewCache=data;
+  if(!keepShown)productsShown=PRODUCTS_PAGE;
+  productsShown=Math.min(Math.max(productsShown,PRODUCTS_PAGE),Math.max(data.length,PRODUCTS_PAGE));
   document.getElementById('p_count').textContent=data.length+'件';
-  document.getElementById('productsTable').innerHTML=data.length?data.map(d=>{
-    // 出品用写真が入るまでは仕入れ時写真の1枚目、入ったら出品用の1枚目に切替
-    const photo=(d.listing_photo_urls&&d.listing_photo_urls.length)?d.listing_photo_urls[0]:((d.photo_urls&&d.photo_urls.length)?d.photo_urls[0]:'');
-    const thumb=photo?`<img class="thumb" src="${photo}" style="cursor:zoom-in;" onclick="openImageViewer('${photo}')">`:`<div class="thumb-empty">なし</div>`;
-    const pdate=(d.created_at||'').slice(0,10);
-    return `<tr><td style="font-size:11px;white-space:nowrap;">${pdate||'-'}</td><td>${thumb}</td><td class="no-id">#${String(d.product_no||'?').padStart(4,'0')}</td><td style="font-size:11px;color:var(--text2);">${d.shelf_no||'-'}</td><td>${d.brand_name||'-'}</td><td>${d.item_shape||'-'}</td><td>${d.main_category||'-'}/${d.sub_category||'-'}</td><td>¥${(d.purchase_price||0).toLocaleString()}</td><td><select class="status-inline" data-id="${d.id}" onchange="updateStatusInline(this)" style="padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:11px;font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--text);outline:none;cursor:pointer;">${statusOptions(d.status)}</select></td><td><button class="action-btn" onclick="viewProduct('${d.id}')">詳細</button><button class="action-btn" onclick="openEdit('${d.id}')">編集</button><button class="action-btn del" onclick="deleteProduct('${d.id}',${d.product_no||0})">削除</button></td></tr>`;
-  }).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
+  document.getElementById('productsTable').innerHTML=data.length?data.slice(0,productsShown).map(productRowHtml).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">該当なし</td></tr>';
+  updateProductsMore();
+}
+function showMoreProducts(){
+  const from=productsShown;
+  if(from>=productsViewCache.length)return;
+  productsShown=Math.min(from+PRODUCTS_PAGE,productsViewCache.length);
+  document.getElementById('productsTable').insertAdjacentHTML('beforeend',productsViewCache.slice(from,productsShown).map(productRowHtml).join(''));
+  updateProductsMore();
+}
+function updateProductsMore(){
+  const box=document.getElementById('p_more');if(!box)return;
+  const rest=productsViewCache.length-productsShown;
+  box.style.display=rest>0?'block':'none';
+  const b=document.getElementById('p_moreBtn');
+  if(b)b.textContent='さらに表示（'+Math.min(rest,PRODUCTS_PAGE)+'件）　残り '+rest.toLocaleString()+'件';
+}
+// 一覧の下端が見えてきたら自動で続きを表示
+if('IntersectionObserver' in window){
+  new IntersectionObserver(es=>{
+    if(es.some(e=>e.isIntersecting)&&document.getElementById('products').classList.contains('active'))showMoreProducts();
+  },{rootMargin:'600px 0px'}).observe(document.getElementById('p_more'));
 }
 // ==================== 画像拡大ビューア ====================
 function openImageViewer(url){
@@ -3434,9 +3571,10 @@ function clearProductsFilter(){
   renderProductsTable(productsListCache);
 }
 async function loadProducts(){
-  const data=await fetchAllRows('id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date,product_title,keywords,free_word,sold_platform,sold_to','product_no',false);if(!data)return;
-  productsListCache=data;
-  applyProductsFilter();
+  await loadView('products','id,product_no,brand_name,item_shape,shelf_no,main_category,sub_category,purchase_price,status,listing_photo_urls,photo_urls,created_at,listing_date,sold_date,product_title,keywords,free_word,sold_platform,sold_to','product_no',false,(data,isRefresh)=>{
+    productsListCache=data;
+    renderProductsTable(filterProducts(data),isRefresh);   // 裏での最新化では表示件数・スクロール位置を保つ
+  });
 }
 
 // ==================== CSVエクスポート ====================
@@ -3511,7 +3649,9 @@ function getMonthWeek(dateStr){const d=new Date(dateStr);return Math.ceil(d.getD
 function getWeekNumber(dateStr){const d=new Date(dateStr);const jan1=new Date(d.getFullYear(),0,1);return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);}
 
 async function loadSales(){
-  const data=await fetchAllRows('id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category,purchase_source','created_at',true);if(!data)return;
+  await loadView('sales','id,product_no,brand_name,status,created_at,listing_date,sold_date,purchase_price,revenue,profit_gross,profit_after_shipping,profit_rate,price_mid,price_low,shipping_cost,sold_platform,sold_to,main_category,sub_category,purchase_source','created_at',true,renderSales);
+}
+function renderSales(data,isRefresh){
   chartAllData=data;salesRawData=data;buildYearOptions(data);buildSheetYearOptions(data);
   const sold=data.filter(d=>d.status==='入金');
   const totalRev=sold.reduce((s,d)=>s+(d.revenue||0),0);const totalProfit=sold.reduce((s,d)=>s+(d.profit_gross||0),0);
@@ -3521,8 +3661,15 @@ async function loadSales(){
   const receivable=receivableItems.reduce((s,d)=>{const rev=d.revenue||0;if(!rev)return s;const fee=(FEE_MAP[d.sold_platform]!==undefined?FEE_MAP[d.sold_platform]:10)/100;const ship=d.shipping_cost||0;return s+Math.floor(rev*(1-fee)-ship);},0);
   const rcSpan='<span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0;">';
   document.getElementById('salesStats').innerHTML=`<div class="stat"><p>売却数</p><h3>${sold.length}</h3></div><div class="stat"><p>総売上 ${rcSpan}（各商品の売上金額の合計）</span></p><h3>¥${totalRev.toLocaleString()}</h3></div><div class="stat"><p>純利益 ${rcSpan}（売上×(1−手数料)−仕入れ の合計）</span></p><h3 class="${totalProfit<0?'neg':''}">¥${totalProfit.toLocaleString()}</h3></div><div class="stat"><p>売掛金 ${rcSpan}（発送前・受け取り評価前／売上×(1−手数料)−送料）</span></p><h3>¥${receivable.toLocaleString()}</h3></div>`;
-  buildSheetTable(data);
+  applySheetFilter();   // 年（初期は今年）・月の絞り込みを適用してスプシを作る
   salesListCache=sold.sort((a,b)=>new Date(b.sold_date)-new Date(a.sold_date));renderSalesTable(salesListCache);
+  if(isRefresh){
+    // 裏で最新化した時：絞り込み条件を保ったまま、表示中のタブだけ描き直す
+    const vis=id=>{const e=document.getElementById(id);return e&&e.style.display!=='none';};
+    if(vis('salesChartView'))redrawAllCharts();
+    if(vis('salesStockView'))buildStockTable();
+    if(vis('salesCohortView'))buildCohortTable();
+  }
 }
 
 // ==================== 認証（Supabase Auth・メール＋パスワード）====================
@@ -3536,15 +3683,29 @@ function showAuthScreen(show){
   document.getElementById('authOverlay').style.display=show?'flex':'none';
   document.getElementById('navAccount').style.display=show?'none':'flex';
 }
+let lastLoginEmail='';
 async function refreshAuthUI(){
   const {data:{session}}=await sb.auth.getSession();
   if(session&&session.user){
+    lastLoginEmail=session.user.email||lastLoginEmail;
     document.getElementById('navEmail').textContent=session.user.email||'';
     showAuthScreen(false);
     initAppOnce();
+  }else if(appInited&&hasStoredSession()){
+    // 使用中に一時的に確認できなかっただけ（通信の回復待ち）。画面はそのまま、必要な処理側で待つ
+    ensureSession();
   }else{
     showAuthScreen(true);
   }
+}
+// 使用中にログインが切れたとき：画面や入力中の内容はそのまま残し、上にログイン画面を重ねる
+function promptRelogin(){
+  if(authOverlayOpen())return;
+  const sub=document.getElementById('authSub');
+  if(sub&&appInited)sub.textContent='ログインの有効期限が切れました。もう一度ログインしてください（入力中の内容はそのまま残ります。ログイン後、保存などの操作は自動で続行されます）';
+  const em=document.getElementById('authEmail');
+  if(em&&!em.value&&lastLoginEmail)em.value=lastLoginEmail;
+  showAuthScreen(true);
 }
 async function doLogin(e){
   e.preventDefault();
@@ -3556,10 +3717,19 @@ async function doLogin(e){
   btn.disabled=false;
   if(error){err.textContent='ログインに失敗しました。メール・パスワードをご確認ください。';return;}
   document.getElementById('authPassword').value='';
+  const wasInUse=appInited;
   await refreshAuthUI();
+  const sub=document.getElementById('authSub');if(sub)sub.textContent='ログインしてください';
+  if(wasInUse){
+    // 再ログイン：待機していた保存・読み込みは自動で続行される
+    const t=document.createElement('div');
+    t.textContent='再ログインしました';
+    t.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:600;background:var(--accent);color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;font-family:"Noto Sans JP",sans-serif;';
+    document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
+  }
 }
 async function doLogout(){
-  await sb.auth.signOut();
+  await sb.auth.signOut({scope:'local'});
   location.reload();
 }
 async function changePassword(){
@@ -3573,7 +3743,15 @@ async function changePassword(){
   if(error){alert('変更に失敗しました：'+error.message);return;}
   alert('パスワードを変更しました');
 }
-sb.auth.onAuthStateChange((event)=>{ if(event==='SIGNED_OUT')showAuthScreen(true); });
+sb.auth.onAuthStateChange((event)=>{ if(event==='SIGNED_OUT'){ if(appInited)promptRelogin(); else showAuthScreen(true); } });
+// 端末を切り替えた・スリープから戻った瞬間にログイン状態を確認しておく（操作時に止まって見える時間をなくす）
+function checkSessionOnResume(){
+  if(!appInited||authOverlayOpen()||document.visibilityState!=='visible')return;
+  ensureSession();
+}
+document.addEventListener('visibilitychange',checkSessionOnResume);
+window.addEventListener('online',checkSessionOnResume);
+window.addEventListener('pageshow',checkSessionOnResume);
 refreshAuthUI();
 </script>
 </body>
