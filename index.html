@@ -1676,7 +1676,9 @@ async function fetchTrend(){
     trendCache=trend;      // 保存で残せるようキャッシュに保持
     renderTrendResult(trend);
 
-    status.className='status-msg ok';status.textContent='トレンド取得完了';
+    // 出力の上限で途中まで止まった場合は「完了」とせず知らせる
+    if(trendData.stop_reason==='max_tokens'){status.className='status-msg err';status.textContent='相場の一部を取得できませんでした。もう一度「トレンド検索」を押してください';}
+    else{status.className='status-msg ok';status.textContent='トレンド取得完了';}
   }catch(err){
     document.getElementById('trendLoading').style.display='none';
     document.getElementById('trendEmpty').style.display='block';
@@ -1829,7 +1831,7 @@ function buildProductTitle(r){
 // 過去の承認済み商品を「お手本」として取得（同カテゴリ優先）。
 // 修正して保存した文章がそのまま蓄積されるため、使うほど自社の文体に寄っていく。
 async function fetchStyleExamples(cat,limit){
-  const cols='product_title,product_description,repair_detail,keywords,sub_category';
+  const cols='product_title,product_description,repair_detail,sub_category';   // キーワードはお手本に含めない（下の buildStyleBlock 参照）
   try{
     let q=sb.from('products').select(cols)
       .not('product_description','is',null).neq('product_description','')
@@ -1855,7 +1857,8 @@ function buildStyleBlock(examples){
     if(d.product_title)parts.push('タイトル:'+d.product_title);
     if(d.product_description)parts.push('商品文章:'+d.product_description);
     if(d.repair_detail)parts.push('リペア内容:'+d.repair_detail);
-    if(d.keywords)parts.push('キーワード:'+d.keywords);
+    // キーワードはお手本に含めない：以前は含めていたため、AIが過去の長さを真似して毎回さらに長く書き、
+    // 7月に約9語→10月に約345語まで膨らみ、出力の上限に達して商品文章・リペア内容が書かれなくなっていた
     return '【例'+(i+1)+'】\n'+parts.join('\n');
   }).join('\n\n');
   return '■お手本（自社で実際に使用した過去の出品文。文体・語彙・長さ・言い回しをこれに合わせる。内容そのものは流用しない）\n'+body+'\n\n';
@@ -1890,7 +1893,7 @@ async function generateAI(){
   try{
     // トレンド検索済みならその注目キーワード・相場をタイトルSEOの材料として渡す
     const trendKw=(trendCache&&Array.isArray(trendCache.hotKeywords))?trendCache.hotKeywords.filter(Boolean):[];
-    const brandInfo=hasPhotos?'':[brand,shape,freeWord].filter(Boolean).join(' ')+' ';
+    const brandInfo=[brand,shape,freeWord].filter(Boolean).join(' ');   // 写真があっても必ず渡す（以前は写真がある時は送っていなかった）
     // 過去の承認済み文章をお手本として取得（学習の代わり）
     setProgress(25,'過去の出品文を参照中...');
     const styleExamples=await fetchStyleExamples(document.getElementById('e_subCategory').value,3);
@@ -1908,25 +1911,34 @@ async function generateAI(){
       +'brandNameは**英語表記**で返す（例：Louis Vuitton, GUCCI）。itemShapeは**日本語のまま**（例：二つ折り財布・長財布）。英語にしない。\n'
       +(trendKw.length?('検索トレンドの注目キーワード（優先的にSEOワードへ活用）：'+trendKw.join(' / ')+'\n'):'')
       +'リペア：'+(repairInput||'不明')+' 状態ランク：'+(rankInput||'不明')+'\n'
-      +(hasPhotos?'':'対象：'+brandInfo+'\n')
+      +(brandInfo?'対象：'+brandInfo+'\n':'')
+      +'keywords=検索で使われる関連キーワードをカンマ(,)区切りで**最大'+AI_MAX_KEYWORDS+'語**。同じ語・言い換えの繰り返しは禁止。お手本の長さは参考にしない。\n'
       +'JSON書式の厳守：値の中では半角のダブルクォート(")を絶対に使わない。強調は「」で囲む。改行も入れない。JSON以外の文章は一切書かない。\n'
-      +'JSONのみ返答：{"brandName":"","itemShape":"","keywords":"","titleVariants":[{"writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":""}],"productDescription":"","repairDetail":""}';
+      +'JSONのみ返答（必ずこの順番で書く）：{"brandName":"","itemShape":"","productDescription":"","repairDetail":"","titleVariants":[{"writingTitle":"","bigWord":"","midWord":"","smallWord":"","longTailWord":""}],"keywords":""}';
 
-    const messages=hasPhotos
-      ? [{role:'user',content:[...editListingImages.slice(0,AI_MAX_IMAGES).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}})),{type:'text',text:basePrompt}]}]
+    // 写真：この画面で追加した写真を優先し、足りない分は保存済みの出品用写真（URL）で補う
+    // ※以前は追加分しか送っておらず、「撮影→保存→あとでAI生成」の流れではAIに写真が届いていなかった
+    const imgs=editListingImages.slice(0,AI_MAX_IMAGES).map(img=>({type:'image',source:{type:'base64',media_type:img.type,data:img.base64}}));
+    if(imgs.length<AI_MAX_IMAGES&&currentEditData&&Array.isArray(currentEditData.listing_photo_urls)){
+      currentEditData.listing_photo_urls.slice(0,AI_MAX_IMAGES-imgs.length).forEach(u=>{if(u)imgs.push({type:'image',source:{type:'url',url:u}});});
+    }
+    const messages=imgs.length
+      ? [{role:'user',content:[...imgs,{type:'text',text:basePrompt}]}]
       : [{role:'user',content:basePrompt}];
 
     setProgress(50,'生成中...');
     const aiRes=await fetch(CLAUDE_PROXY,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken())},
-      body:JSON.stringify({model:AI_MODEL,max_tokens:2500,messages})
+      body:JSON.stringify({model:AI_MODEL,max_tokens:3000,messages})
     });
     const {data:aiData,raw:aiRaw}=await readJsonSafe(aiRes);
     if(!aiData||!aiData.content) throw new Error(describeApiError(aiData,aiRaw));
     const aiText=aiData.content.filter(i=>i.type==='text').map(i=>i.text||'').join('');
     if(!aiText) throw new Error('AI応答が空です');
     const r=parseAiJson(aiText);
+    // 出力の上限に達して途中で止まった場合（以前はこれを検知せず、書けた分だけ入れて「完了」と表示していた）
+    const truncated=aiData.stop_reason==='max_tokens';
 
     setProgress(90,'反映中...');
     if(r.brandName) document.getElementById('e_brandName').value=r.brandName;
@@ -1946,14 +1958,26 @@ async function generateAI(){
     // 商品名（タイトル）は1案目のフル構成
     document.getElementById('e_productTitle').value=buildProductTitle(Object.assign({brandName:r.brandName,itemShape:r.itemShape},variants[0]||{}))||'';
     // タイトル候補欄は【ライティングタイトル】のみを5案
-    document.getElementById('e_keywordsCopy').value=variants.map(v=>{const w=cleanAI(v.writingTitle);return w?('【'+w+'】'):'';}).filter(Boolean).join('\n');
-    document.getElementById('e_keywords').value=r.keywords||'';
-    document.getElementById('e_productDescription').value=limitChars(r.productDescription||'',200);
-    document.getElementById('e_repairDetail').value=cleanRepairText(r.repairDetail||'');
+    const titlesText=variants.map(v=>{const w=cleanAI(v.writingTitle);return w?('【'+w+'】'):'';}).filter(Boolean).join('\n');
+    // AIが返さなかった項目は空で上書きしない（入力済みの内容を消さないため）
+    if(titlesText)document.getElementById('e_keywordsCopy').value=titlesText;
+    const kw=limitKeywords(r.keywords,AI_MAX_KEYWORDS);
+    if(kw)document.getElementById('e_keywords').value=kw;
+    if(r.productDescription)document.getElementById('e_productDescription').value=limitChars(r.productDescription,200);
+    if(r.repairDetail)document.getElementById('e_repairDetail').value=cleanRepairText(r.repairDetail);
     calcEditPrices();
 
     setProgress(100,'');
-    status.className='status-msg ok';status.textContent='自動入力完了';
+    const missing=[];
+    if(!r.productDescription)missing.push('商品文章');
+    if(!r.repairDetail)missing.push('リペア内容');
+    if(!titlesText)missing.push('タイトル候補');
+    if(truncated||missing.length){
+      status.className='status-msg err';
+      status.textContent='一部が生成されませんでした'+(missing.length?'（'+missing.join('・')+'）':'')+'。もう一度「AI自動入力」を押してください';
+    }else{
+      status.className='status-msg ok';status.textContent='自動入力完了';
+    }
     setTimeout(()=>{
       document.getElementById('e_progressBar').style.display='none';
       document.getElementById('e_progressFill').style.width='0%';
@@ -1968,6 +1992,12 @@ async function generateAI(){
 }
 
 // キーワードをフィールドに追加（SEOキーワード欄のみ。コピー用欄はタイトル候補なので触らない）
+const AI_MAX_KEYWORDS=30;
+function limitKeywords(text,max){
+  const seen=new Set(),out=[];
+  String(text||'').split(/[,、，\n]+/).map(w=>w.trim()).filter(Boolean).forEach(w=>{const k=w.toLowerCase();if(!seen.has(k)&&out.length<max){seen.add(k);out.push(w);}});
+  return out.join(',');
+}
 function appendKeyword(kw){
   const kwField=document.getElementById('e_keywords');
   const existing=kwField.value.trim();
@@ -2161,6 +2191,10 @@ function drawStatusAmounts(){
   });
 }
 
+// 月は必ずこの順で並べる。{'01':..,'12':..} のようなオブジェクトをそのまま並べると、
+// JavaScriptの仕様で "10""11""12" が先頭に来て「10月→12月→1月→9月」の順になってしまうため
+const MONTH_KEYS=['01','02','03','04','05','06','07','08','09','10','11','12'];
+const MONTH_LABELS=MONTH_KEYS.map(k=>parseInt(k)+'月');
 function getMonthlyBase(yr){
   const m={};
   for(let i=1;i<=12;i++)m[String(i).padStart(2,'0')]={purchaseCount:0,purchaseSum:0,purchasePrices:[],soldCount:0,revenueSum:0,listingCount:0};
@@ -2180,42 +2214,42 @@ function getMonthlyBase(yr){
 
 function drawBarListingSold(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=MONTH_LABELS;const mv=MONTH_KEYS.map(k=>m[k]);
   destroyChart('chartListingSold');
   chartInstances['chartListingSold']=new Chart(document.getElementById('chartListingSold').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'出品数',data:Object.values(m).map(v=>v.listingCount),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
-      {label:'売却数',data:Object.values(m).map(v=>v.soldCount),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
+      {label:'出品数',data:mv.map(v=>v.listingCount),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
+      {label:'売却数',data:mv.map(v=>v.soldCount),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
     ]},options:barOpts(v=>v+'点')
   });
 }
 function drawBarPurchaseTotal(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=MONTH_LABELS;const mv=MONTH_KEYS.map(k=>m[k]);
   destroyChart('chartPurchaseTotal');
   chartInstances['chartPurchaseTotal']=new Chart(document.getElementById('chartPurchaseTotal').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:Object.values(m).map(v=>v.purchaseSum),backgroundColor:'rgba(139,101,230,0.85)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:mv.map(v=>v.purchaseSum),backgroundColor:'rgba(139,101,230,0.85)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
 function drawBarPurchaseStats(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=MONTH_LABELS;const mv=MONTH_KEYS.map(k=>m[k]);
   destroyChart('chartPurchaseStats');
   chartInstances['chartPurchaseStats']=new Chart(document.getElementById('chartPurchaseStats').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'平均',data:Object.values(m).map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
-      {label:'最大',data:Object.values(m).map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:'rgba(255,99,120,0.85)',borderRadius:3},
-      {label:'最小',data:Object.values(m).map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
+      {label:'平均',data:mv.map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
+      {label:'最大',data:mv.map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:'rgba(255,99,120,0.85)',borderRadius:3},
+      {label:'最小',data:mv.map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
     ]},options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
 function drawBarAvgSale(){
   const yr=document.getElementById('chartYearSelect').value;if(!yr)return;
-  const m=getMonthlyBase(yr);const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const m=getMonthlyBase(yr);const labels=MONTH_LABELS;const mv=MONTH_KEYS.map(k=>m[k]);
   destroyChart('chartAvgSale');
   chartInstances['chartAvgSale']=new Chart(document.getElementById('chartAvgSale').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:Object.values(m).map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(255,171,64,0.85)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:mv.map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(255,171,64,0.85)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -3141,10 +3175,10 @@ function drawDashMonthlyChart(){
   const yr=document.getElementById('dashYearSelect').value;if(!yr)return;
   const m={};for(let i=1;i<=12;i++)m[String(i).padStart(2,'0')]=0;
   dashChartData.forEach(d=>{if(d.sold_date&&d.sold_date.startsWith(yr)){const mo=d.sold_date.slice(5,7);if(m[mo]!==undefined)m[mo]+=d.revenue||0;}});
-  const labels=Object.keys(m).map(k=>parseInt(k)+'月');
+  const labels=MONTH_LABELS;
   destroyChart('dashMonthlyChart');
   chartInstances['dashMonthlyChart']=new Chart(document.getElementById('dashMonthlyChart').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'売上',data:Object.values(m),backgroundColor:'rgba(45,125,79,0.85)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'売上',data:MONTH_KEYS.map(k=>m[k]),backgroundColor:'rgba(45,125,79,0.85)',borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
