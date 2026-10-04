@@ -2043,11 +2043,6 @@ async function generateAI(){
     }else{
       status.className='status-msg ok';status.textContent='自動入力完了';
     }
-    // 参考にした過去の出品を表示（何を学習に使ったかをスタッフが確認できるように）
-    if(styleExamples.length){
-      const ref=styleExamples.map(d=>'#'+String(d.product_no||'?').padStart(4,'0')+'（'+(d.match||'')+(d.ai_edited?'・手直し済み':'')+'）').join(' ');
-      status.textContent+='｜参考：'+ref;
-    }
     // 学習用に、AIが書いた内容を控える（保存時に人の手直しがあったかを比べる）
     aiDraft={id:editingId,product_title:document.getElementById('e_productTitle').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,at:new Date().toISOString()};
     setTimeout(()=>{
