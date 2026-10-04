@@ -1301,6 +1301,7 @@ async function updateProductRow(id,payload){
 
 let registerImages=[];
 let editingId=null;
+let aiDraft=null;   // 直近のAI生成内容（学習の記録用。保存時に人の手直しと比べる）
 let editListingImages=[];
 let editPurchaseImages=[];
 let currentEditData=null;
@@ -1830,30 +1831,90 @@ function buildProductTitle(r){
 
 // 過去の承認済み商品を「お手本」として取得（同カテゴリ優先）。
 // 修正して保存した文章がそのまま蓄積されるため、使うほど自社の文体に寄っていく。
-async function fetchStyleExamples(cat,limit){
-  const cols='product_title,product_description,repair_detail,sub_category';   // キーワードはお手本に含めない（下の buildStyleBlock 参照）
+// ==================== AIの学習（お手本の選び方）====================
+// 初回は 写真・ブランド名・形状・フリーワード から生成。人が手直しして保存した文章を「学習済み」として記録し、
+// 次回、同じブランド×形状×フリーワードの商品では、その手直し済みの文章を最優先のお手本にして生成する。
+// ブランド名は「ルイヴィトン／Louis Vuitton」のように表記が混在しているため、同じブランドとして扱う
+const BRAND_ALIAS={'ルイヴィトン':'Louis Vuitton','ルイ・ヴィトン':'Louis Vuitton','グッチ':'GUCCI','プラダ':'PRADA','コーチ':'COACH',
+ 'フェンディ':'FENDI','ポーター':'PORTER','ディーゼル':'DIESEL','シャネル':'CHANEL','バーバリー':'BURBERRY','ミュウミュウ':'MIU MIU',
+ 'ポロラルフローレン':'POLO RALPH LAUREN','サンローラン':'Saint Laurent','ボッテガヴェネタ':'BOTTEGA VENETA','ボッテガベネタ':'BOTTEGA VENETA',
+ 'ヴォッテガべネタ':'BOTTEGA VENETA','ケイトスペード':'kate spade','レイバン':'Ray-Ban','ベルサーチ':'VERSACE','ヴェルサーチ':'VERSACE',
+ 'トリーバーチ':'Tory Burch','トッカ':'TOCCA','レスポートサック':'LeSportsac','ヴィヴィアンウエストウッド':'Vivienne Westwood',
+ 'ポールスミス':'Paul Smith','クリスチャンディオール':'Christian Dior','ディオール':'Christian Dior','Dior':'Christian Dior',
+ 'バレンシアガ':'BALENCIAGA','カルティエ':'Cartier','フォッシル':'FOSSIL','エルメス':'HERMÈS','シーバイクロエ':'See By Chloé',
+ 'クロエ':'Chloé','キタムラ':'Kitamura','サルバトーレフェラガモ':'Ferragamo','SalvatoreFerragamo':'Ferragamo','ゲンテン':'genten',
+ 'セイコー':'SEIKO','トッズ':"TOD'S",'ヘルツ':'HERZ','ドルチェ&ガッバーナ':'DOLCE & GABBANA','ヴァレンティノ':'Valentino Garavani',
+ 'ヴァレンティノガラヴァーニ':'Valentino Garavani','カシオ':'CASIO','ナイキ':'NIKE','セリーヌ':'CELINE','ラシット':'russet','ロエベ':'LOEWE',
+ 'オフホワイト':'OFF-WHITE','アミパリス':'AMI PARIS','ポレーヌ':'Polène','ロンシャン':'Longchamp','フルラ':'FURLA','マイケルコース':'MICHAEL KORS',
+ 'ジミーチュウ':'JIMMY CHOO','イルビゾンテ':'IL BISONTE','イルビゾンデ':'IL BISONTE','ダコタ':'Dakota','シチズン':'CITIZEN','ブルガリ':'BVLGARI'};
+function brandKey(name){
+  let s=String(name||'').trim(); if(!s)return '';
+  const compact=s.replace(/[\s　・･]/g,'');
+  if(BRAND_ALIAS[compact])s=BRAND_ALIAS[compact];
+  return s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9ぁ-んァ-ヶ一-龠]/g,'');
+}
+// 検索用：同じブランドとみなす表記をすべて列挙（英語表記・日本語表記の両方で探すため）
+function brandVariants(name){
+  const key=brandKey(name); if(!key)return [];
+  const set=new Set([String(name).trim()]);
+  Object.keys(BRAND_ALIAS).forEach(jp=>{const en=BRAND_ALIAS[jp];if(brandKey(en)===key){set.add(jp);set.add(en);}});
+  return [...set].filter(Boolean);
+}
+function freeWordTokens(s){return String(s||'').toLowerCase().split(/[\s　,、，/／・]+/).map(t=>t.trim()).filter(t=>t.length>=2);}
+const isModelNo=t=>/^[a-z]{1,3}\d{3,}[a-z0-9]*$/i.test(t);   // 型番（例：M60017・N63095）
+// お手本はこのアプリで登録した商品に限る（2026-05以前は旧システムから取り込んだ過去データで、書式が今と違うため）
+const STYLE_SINCE='2026-06-01';
+// お手本を最大 limit 件選ぶ。返り値の各要素に「どれだけ近いか（match）」と「手直し済みか」を付ける
+async function fetchStyleExamples(ctx,limit){
+  limit=limit||3;
+  const cols='id,product_no,brand_name,item_shape,free_word,product_title,product_description,repair_detail,sub_category,ai_reviewed,ai_edited,ai_learned_at,created_at';
+  const notEmpty=q=>q.not('product_description','is',null).neq('product_description','').gte('created_at',STYLE_SINCE);
+  const picked=[],seen=new Set([ctx.excludeId]);
+  const add=(d,match)=>{if(!d||seen.has(d.id)||picked.length>=limit)return;seen.add(d.id);picked.push(Object.assign({match},d));};
   try{
-    let q=sb.from('products').select(cols)
-      .not('product_description','is',null).neq('product_description','')
-      .order('created_at',{ascending:false})
-      .limit(limit||3);
-    if(cat)q=q.eq('sub_category',cat);
-    let {data,error}=await q;
-    if(error||!data||!data.length){
-      // 同カテゴリに実績がなければカテゴリ問わずで再取得
-      const r=await sb.from('products').select(cols)
-        .not('product_description','is',null).neq('product_description','')
-        .order('created_at',{ascending:false}).limit(limit||3);
-      data=r.data||[];
+    // 1) 同じブランド（表記ゆれ込み）の過去の出品から、形状・フリーワードの一致度と学習状況で点数を付ける
+    const vars=brandVariants(ctx.brand);
+    if(vars.length){
+      let q=notEmpty(sb.from('products').select(cols))
+        .or(vars.map(v=>'brand_name.ilike."'+v.replace(/["\\]/g,'')+'"').join(','))
+        .order('created_at',{ascending:false}).limit(150);
+      if(ctx.cat)q=q.eq('sub_category',ctx.cat);
+      const {data}=await q;
+      const shapeKey=String(ctx.shape||'').trim();
+      const myTok=freeWordTokens(ctx.freeWord);
+      const scored=(data||[]).filter(d=>d.id!==ctx.excludeId).map(d=>{
+        const sameShape=!!shapeKey&&String(d.item_shape||'').trim()===shapeKey;
+        const tok=freeWordTokens(d.free_word);
+        const overlap=myTok.filter(t=>tok.includes(t));
+        const modelHit=overlap.some(isModelNo);
+        let score=(sameShape?50:0)+Math.min(overlap.length,4)*10+(modelHit?40:0)+(d.ai_edited?25:0)+(d.ai_reviewed?15:0);
+        const match=sameShape&&(modelHit||overlap.length>=1)?'同じブランド・形状・フリーワード':(sameShape?'同じブランド・形状':'同じブランド');
+        return {d,score,match,t:Date.parse(d.ai_learned_at||d.created_at)||0};
+      }).sort((a,b)=>b.score-a.score||b.t-a.t);
+      scored.forEach(x=>add(x.d,x.match));
     }
-    return data;
-  }catch(e){ console.warn('お手本の取得に失敗',e); return []; }
+    // 2) 足りない分は、同じカテゴリで人が確認した文章（文体の参考）
+    if(picked.length<limit){
+      let q=notEmpty(sb.from('products').select(cols)).eq('ai_reviewed',true).order('ai_learned_at',{ascending:false,nullsFirst:false}).limit(10);
+      if(ctx.cat)q=q.eq('sub_category',ctx.cat);
+      const {data}=await q; (data||[]).forEach(d=>add(d,'同じカテゴリ'));
+    }
+    // 3) それでも足りなければ、同じカテゴリの最近の出品
+    if(picked.length<limit){
+      let q=notEmpty(sb.from('products').select(cols)).order('created_at',{ascending:false}).limit(10);
+      if(ctx.cat)q=q.eq('sub_category',ctx.cat);
+      const {data}=await q; (data||[]).forEach(d=>add(d,'同じカテゴリ'));
+    }
+  }catch(e){ console.warn('お手本の取得に失敗',e); }
+  return picked;
 }
 // お手本をプロンプト用テキストに整形
 function buildStyleBlock(examples){
   if(!examples||!examples.length)return '';
   const body=examples.map((d,i)=>{
     const parts=[];
+    const learned=d.ai_edited?'人が手直し済み':(d.ai_reviewed?'人が確認済み':'');
+    parts.push('（'+(d.match||'同じカテゴリ')+(learned?'／'+learned:'')+'｜'+[d.brand_name,d.item_shape,d.free_word].filter(Boolean).join(' ')+'）');
     if(d.product_title)parts.push('タイトル:'+d.product_title);
     if(d.product_description)parts.push('商品文章:'+d.product_description);
     if(d.repair_detail)parts.push('リペア内容:'+d.repair_detail);
@@ -1861,7 +1922,11 @@ function buildStyleBlock(examples){
     // 7月に約9語→10月に約345語まで膨らみ、出力の上限に達して商品文章・リペア内容が書かれなくなっていた
     return '【例'+(i+1)+'】\n'+parts.join('\n');
   }).join('\n\n');
-  return '■お手本（自社で実際に使用した過去の出品文。文体・語彙・長さ・言い回しをこれに合わせる。内容そのものは流用しない）\n'+body+'\n\n';
+  return '■お手本（自社で実際に使用した過去の出品文。人が手直し済みのものは、その直し方が自社の正解）\n'+body+'\n'
+    +'■お手本の使い方\n'
+    +'・「同じブランド・形状・フリーワード」「同じブランド・形状」のお手本は、商品の特徴の説明・言い回し・タイトルの語句を最優先で踏襲する（手直し済みの表現を特に優先）。\n'
+    +'・ただし状態・リペア内容は必ず今回の入力（気になる状態・リペア）と写真に合わせ、お手本の状態やリペアは流用しない。型番・色など商品固有の情報も、今回の入力・写真と一致する場合のみ使う。\n'
+    +'・「同じブランド」「同じカテゴリ」のお手本は、文体・語彙・長さの参考にとどめる。\n\n';
 }
 
 // ==================== AI自動入力 ====================
@@ -1896,7 +1961,7 @@ async function generateAI(){
     const brandInfo=[brand,shape,freeWord].filter(Boolean).join(' ');   // 写真があっても必ず渡す（以前は写真がある時は送っていなかった）
     // 過去の承認済み文章をお手本として取得（学習の代わり）
     setProgress(25,'過去の出品文を参照中...');
-    const styleExamples=await fetchStyleExamples(document.getElementById('e_subCategory').value,3);
+    const styleExamples=await fetchStyleExamples({brand,shape,freeWord,cat:document.getElementById('e_subCategory').value,excludeId:editingId},3);
     const styleBlock=buildStyleBlock(styleExamples);
 
     const basePrompt=styleBlock+'中古ブランド品ECコピーライター。\n'
@@ -1978,6 +2043,13 @@ async function generateAI(){
     }else{
       status.className='status-msg ok';status.textContent='自動入力完了';
     }
+    // 参考にした過去の出品を表示（何を学習に使ったかをスタッフが確認できるように）
+    if(styleExamples.length){
+      const ref=styleExamples.map(d=>'#'+String(d.product_no||'?').padStart(4,'0')+'（'+(d.match||'')+(d.ai_edited?'・手直し済み':'')+'）').join(' ');
+      status.textContent+='｜参考：'+ref;
+    }
+    // 学習用に、AIが書いた内容を控える（保存時に人の手直しがあったかを比べる）
+    aiDraft={id:editingId,product_title:document.getElementById('e_productTitle').value,product_description:document.getElementById('e_productDescription').value,repair_detail:document.getElementById('e_repairDetail').value,at:new Date().toISOString()};
     setTimeout(()=>{
       document.getElementById('e_progressBar').style.display='none';
       document.getElementById('e_progressFill').style.width='0%';
@@ -2893,6 +2965,20 @@ async function saveStage(step,nextStep){
       if(urls.length){const existing=(currentEditData&&Array.isArray(currentEditData.listing_photo_urls))?currentEditData.listing_photo_urls:[];updates.listing_photo_urls=existing.concat(urls);}
     }
     if(nextStep){const ns=advanceStatus(currentEditData&&currentEditData.status,'出品中');if(ns)updates.status=ns;}
+    // 学習の記録：この商品でAIが書いた内容（今回の生成、なければ以前の生成）と、保存する内容を比べる
+    const draft=(aiDraft&&aiDraft.id===editingId)?aiDraft:(currentEditData&&currentEditData.ai_raw)||null;
+    if(draft&&updates.product_description){
+      const t=v=>String(v||'').trim();
+      const edited=['product_title','product_description','repair_detail'].some(k=>t(updates[k])!==t(draft[k]));
+      const wasEdited=!!(currentEditData&&currentEditData.ai_edited);
+      const changed=(aiDraft&&aiDraft.id===editingId)||edited!==wasEdited||['product_title','product_description','repair_detail'].some(k=>t(updates[k])!==t(currentEditData&&currentEditData[k]));
+      if(changed){
+        updates.ai_reviewed=true;
+        updates.ai_edited=edited;
+        updates.ai_learned_at=new Date().toISOString();
+        if(aiDraft&&aiDraft.id===editingId)updates.ai_raw={product_title:aiDraft.product_title,product_description:aiDraft.product_description,repair_detail:aiDraft.repair_detail,at:aiDraft.at};
+      }
+    }
   }
   if(step===3){
     const rev=Number(document.getElementById('e_revenue').value)||0;const ship=Number(document.getElementById('e_shippingCost').value)||0;const cost=currentEditData?.purchase_price||0;const feeRate=getFeeRate();
@@ -2907,7 +2993,7 @@ async function saveStage(step,nextStep){
   // ===== 差分保存 =====
   // currentEditDataと比較し、実際に変わった項目だけをDBへ送る。
   // 写真URL・status・利益系の自動計算値は「常に意図して更新する項目」なので差分判定から除外（常に送る）。
-  const alwaysKeys=['photo_urls','listing_photo_urls','profit_after_shipping','profit_gross','profit_rate'];
+  const alwaysKeys=['photo_urls','listing_photo_urls','profit_after_shipping','profit_gross','profit_rate','ai_reviewed','ai_edited','ai_learned_at','ai_raw'];
   let payload=updates;
   if(currentEditData){
     payload={};
@@ -2937,6 +3023,8 @@ async function saveStage(step,nextStep){
     if(step===2){
       editListingImages=[];
       if(payload.listing_photo_urls){redrawEditGallery('listing',payload.listing_photo_urls);}
+      // 学習の記録が済んだら下書きを片付ける（以後の保存は保存済みの ai_raw と比べる）
+      if(payload.ai_raw)aiDraft=null;
     }
     if(nextStep)setTimeout(()=>switchStep(nextStep),600);
   }
