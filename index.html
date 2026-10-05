@@ -954,6 +954,7 @@ button[onclick="exportProductsCSV()"]{
       <div class="step-item active" id="step1tab" onclick="switchStep(1)">① 仕入れ</div>
       <div class="step-item" id="step2tab" onclick="switchStep(2)">② 出品準備</div>
       <div class="step-item" id="step3tab" onclick="switchStep(3)">③ 出品</div>
+      <div class="step-item" id="step4tab" onclick="switchStep(4)">④ 販売データ</div>
     </div>
 
     <!-- STEP1 -->
@@ -1037,7 +1038,7 @@ button[onclick="exportProductsCSV()"]{
       </div>
       <!-- ===== /TREND SEARCH PANEL ===== -->
 
-      <div class="section-label">リペア詳細<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3);margin-left:6px;">（中カテゴリーで自動切替）</span></div>
+      <div class="section-label">リペア詳細<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3);margin-left:6px;">（中カテゴリーで自動切替）</span><button type="button" onclick="goRepairWork()" style="float:right;padding:3px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--teal);font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;cursor:pointer;">施工箇所・程度を入力（④へ）</button></div>
       <div id="e_repairBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:16px;">
         <span style="font-size:12px;color:var(--text3);">中カテゴリーを選択してください</span>
       </div>
@@ -1212,7 +1213,39 @@ button[onclick="exportProductsCSV()"]{
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveStage(3)">保存</button>
+        <button class="btn btn-next" onclick="saveStage(3,4)">保存して販売データへ →</button>
         <span class="status-msg" id="e_status3"></span>
+      </div>
+    </div>
+
+    <!-- ===== ④ 販売データ（商品ごとの分析用データ）===== -->
+    <div class="stage-panel" id="step4panel">
+      <div class="section-label">①〜③のデータ（入力内容をそのまま反映）</div>
+      <div class="grid" id="e_sdSummary"></div>
+      <div class="section-label">販売データ（自動計算）</div>
+      <div class="grid" id="e_sdMetrics"></div>
+      <div class="section-label" id="e_sdRepairLabel">リペア内容（②でチェックした項目ごとに、施工箇所と施工前の程度）</div>
+      <div id="e_sdRepair" style="margin-bottom:16px;"></div>
+      <div class="section-label">売れたと考えられる要因</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;">澤さんの仮説</div>
+          <div id="e_sdHumanBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:10px;"></div>
+          <div class="field"><label>一言</label><input type="text" id="e_sdHumanNote" placeholder="例：相場より安く、定番モデルで回転が早かった"></div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">AI仮説</div>
+            <button type="button" id="e_sdAiBtn" onclick="analyzeSaleFactors()" style="padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--teal);font-size:11px;font-weight:600;cursor:pointer;">AIで要因を分析</button>
+          </div>
+          <div id="e_sdAiBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:10px;"></div>
+          <div class="field"><label>一言</label><input type="text" id="e_sdAiNote" readonly placeholder="売却後に「AIで要因を分析」を押すと作成されます"></div>
+          <div class="status-msg" id="e_sdAiStatus" style="margin-top:6px;"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveStage(4)">保存</button>
+        <span class="status-msg" id="e_status4"></span>
       </div>
     </div>
   </div>
@@ -2523,13 +2556,207 @@ function clearDrillFilter(){ drillFilter=null; renderDrillChip(); applyProductsF
 
 // ==================== ステップ切り替え ====================
 function switchStep(n){
-  for(let i=1;i<=3;i++){
+  if(n===4)renderSaleData();   // ④は開くたびに①〜③の最新の入力内容から作り直す
+  for(let i=1;i<=4;i++){
     document.getElementById(`step${i}panel`).classList.toggle('active',i===n);
     const tab=document.getElementById(`step${i}tab`);
     tab.classList.remove('active','done');
     if(i===n)tab.classList.add('active');
     else if(i<n)tab.classList.add('done');
   }
+}
+
+
+// ==================== ④ 販売データ（商品ごとの分析用）====================
+// 目的：どれだけリペアして、いくらで、どのくらいの期間で売れたかを商品ごとに残す。
+// ①〜③の入力値はここに自動で反映（保存前の入力もそのまま反映）。日数・中央値との差は自動計算。
+const SALE_FACTORS=['価格','値下げ','ブランド人気','定番モデル','希少性','人気カラー','リペア後の状態','写真','季節性','販売チャネルとの相性','その他'];
+const REPAIR_LEVELS=['小','中','大'];
+const PLACES_LEATHER=['角','コバ','表面','内側','持ち手・ストラップ','ファスナー','金具','底','縫い目','ポケット','全体','その他'];
+const PLACES_SHOES=['つま先','かかと','ソール','アッパー','内側','コバ','紐・金具','全体','その他'];
+const PLACES_WATCH=['ケース','ベルト','風防','文字盤','裏蓋','留め具','全体','その他'];
+const PLACES_SUNGLASS=['レンズ','フレーム','テンプル','鼻パッド','蝶番','全体','その他'];
+const PLACES_APPAREL=['襟','袖','裾','前身頃','後身頃','裏地','ボタン','ファスナー','全体','その他'];
+const PLACES_ACCESSORY=['表面','留め具','チェーン','石','裏面','全体','その他'];
+const REPAIR_PLACE_MAP={
+  '財布':PLACES_LEATHER,'バッグ':PLACES_LEATHER,'ベルト':PLACES_LEATHER,'その他小物':PLACES_LEATHER,
+  '靴':PLACES_SHOES,'腕時計':PLACES_WATCH,'サングラス/メガネ':PLACES_SUNGLASS,
+  'ファッション小物':PLACES_APPAREL,'アパレル':PLACES_APPAREL,'帽子':PLACES_APPAREL,'ネクタイ':PLACES_APPAREL,
+  'チャーム/キーホルダー':PLACES_ACCESSORY,'リング':PLACES_ACCESSORY,'ピアス/イヤリング':PLACES_ACCESSORY,'ネックレス':PLACES_ACCESSORY,'その他アクセサリー':PLACES_ACCESSORY,'ブレスレット/バングル':PLACES_ACCESSORY
+};
+function repairPlaceList(cat){return REPAIR_PLACE_MAP[cat]||PLACES_LEATHER;}
+let repairWork={};        // {リペア項目:[{place:施工箇所, other:その他の内容, level:小/中/大}]}（施工箇所ごとに程度を持つ）
+let saleFactorsAi=null;   // AI仮説 {factors:[...], note:'一言', at}
+const sdEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sdParse=v=>{if(v==null||v==='')return null;if(typeof v==='object')return v;try{return JSON.parse(v);}catch(e){return null;}};
+// 保存値の比較用（jsonbはキーの並びが変わるため、並びをそろえてから比べる）
+function stableJson(v){if(v===null||typeof v!=='object')return JSON.stringify(v===undefined?null:v);if(Array.isArray(v))return '['+v.map(stableJson).join(',')+']';return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stableJson(v[k])).join(',')+'}';}
+
+// 編集画面を開いたときに、保存済みの④を読み込む
+function loadSaleData(data){
+  repairWork={};
+  const rw=sdParse(data.repair_work);
+  (Array.isArray(rw)?rw:[]).forEach(x=>{if(x&&x.item)repairWork[x.item]=(Array.isArray(x.places)?x.places:[]).map(p=>({place:p.place||'',other:p.other||'',level:p.level||''}));});
+  const hf=sdParse(data.sale_factors_human);
+  renderFactorBox('e_sdHumanBox','sd-human',(hf&&hf.factors)||[],false);
+  document.getElementById('e_sdHumanNote').value=(hf&&hf.note)||'';
+  saleFactorsAi=sdParse(data.sale_factors_ai);
+  renderAiFactors();
+  const st=document.getElementById('e_sdAiStatus');st.className='status-msg';st.textContent='';
+}
+function renderFactorBox(boxId,cls,checked,disabled){
+  const set=new Set(checked||[]);
+  document.getElementById(boxId).innerHTML=SALE_FACTORS.map(f=>`<label style="${CHK_LABEL_STYLE}${disabled?'cursor:default;':''}"><input type="checkbox" class="${cls}" value="${sdEsc(f)}" ${set.has(f)?'checked':''} ${disabled?'disabled':''}><span>${sdEsc(f)}</span></label>`).join('');
+}
+function renderAiFactors(){
+  renderFactorBox('e_sdAiBox','sd-ai',saleFactorsAi?saleFactorsAi.factors:[],true);
+  document.getElementById('e_sdAiNote').value=(saleFactorsAi&&saleFactorsAi.note)||'';
+}
+function getCheckedHumanFactors(){return [...document.querySelectorAll('#e_sdHumanBox .sd-human:checked')].map(el=>el.value);}
+
+// 日付（YYYY-MM-DD）。仕入れ日は登録日時（created_at）をこの端末の日付にして使う
+function sdDate(v){
+  if(!v)return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
+  const d=new Date(v);if(isNaN(d))return '';
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function sdDays(from,to){if(!from||!to)return null;return Math.round((Date.parse(to)-Date.parse(from))/86400000);}
+// ①〜③の今の入力値（保存前の入力も含む）
+function saleSnapshot(){
+  const v=id=>{const e=document.getElementById(id);return e?String(e.value||'').trim():'';};
+  const n=id=>{const x=Number(v(id));return v(id)!==''&&!isNaN(x)?x:null;};
+  return {purchaseDate:sdDate(currentEditData&&currentEditData.created_at),purchasePrice:n('e_purchasePrice'),listingDate:v('e_listingDate'),
+    low:n('e_priceLow'),mid:n('e_priceMid'),high:n('e_priceHigh'),soldDate:v('e_soldDate'),revenue:n('e_revenue'),
+    platform:v('e_soldPlatform'),soldTo:v('e_soldTo'),profit:n('e_profitGross'),profitRate:v('e_profitRate')};
+}
+function saleMetrics(s){
+  const sold=!!(s.soldDate&&s.revenue);
+  const m={sold,daysFromPurchase:sold?sdDays(s.purchaseDate,s.soldDate):null,daysFromListing:sold?sdDays(s.listingDate,s.soldDate):null,diff:null,rate:null};
+  if(sold&&s.mid){m.diff=s.revenue-s.mid;m.rate=Math.round(m.diff/s.mid*1000)/10;}
+  return m;
+}
+function renderSaleData(){
+  const s=saleSnapshot(),m=saleMetrics(s);
+  const yen=x=>x==null?'-':'¥'+Math.round(x).toLocaleString();
+  const cell=(l,val)=>`<div class="field"><label>${l}</label><div class="readonly-field">${val==null||val===''?'-':sdEsc(val)}</div></div>`;
+  document.getElementById('e_sdSummary').innerHTML=
+    cell('仕入れ日',s.purchaseDate)+cell('仕入れ価格',s.purchasePrice==null?'':yen(s.purchasePrice))+cell('出品日',s.listingDate)
+    +cell('中央値',s.mid==null?'':yen(s.mid))+cell('売却日',s.soldDate)+cell('売上金額（送料なし）',s.revenue==null?'':yen(s.revenue))
+    +cell('売却プラットフォーム',s.platform)+cell('売れ先',s.soldTo)+cell('利益①',s.profit==null?'':yen(s.profit))+cell('利益率',s.profitRate);
+  const wait='売却後に表示';
+  const dayTxt=d=>d==null?'-':d+'日';
+  let diffTxt='-',rateLabel='値上げ率／値下げ率',rateTxt='-';
+  if(m.sold&&m.diff!=null){
+    diffTxt=(m.diff>0?'＋':m.diff<0?'−':'±')+'¥'+Math.abs(Math.round(m.diff)).toLocaleString();
+    rateLabel=m.rate>0?'値上げ率':m.rate<0?'値下げ率':'値上げ率／値下げ率';
+    rateTxt=(m.rate>0?'＋':m.rate<0?'−':'±')+Math.abs(m.rate)+'%';
+  }else if(m.sold&&s.mid==null){diffTxt=rateTxt='中央値が未入力';}
+  document.getElementById('e_sdMetrics').innerHTML=
+    cell('仕入から販売までの日数',m.sold?dayTxt(m.daysFromPurchase):wait)+cell('出品から販売までの日数',m.sold?(s.listingDate?dayTxt(m.daysFromListing):'出品日が未入力'):wait)
+    +cell('中央値からの差額',m.sold?diffTxt:wait)+cell(rateLabel,m.sold?rateTxt:wait);
+  renderRepairWork();
+  const btn=document.getElementById('e_sdAiBtn');
+  btn.disabled=!m.sold;btn.title=m.sold?'':'売却日と売上金額（③）を入力すると使えます';btn.style.opacity=m.sold?'1':'.5';
+}
+// ②でチェックしたリペア項目ごとに、施工箇所と施工前の程度を入力
+function renderRepairWork(){
+  const box=document.getElementById('e_sdRepair');
+  const items=getCheckedRepairs().filter(x=>x&&x!=='無し');
+  if(!items.length){box.innerHTML='<div style="font-size:12px;color:var(--text3);">②の「リペア詳細」でチェックした項目が、ここに表示されます（「無し」は対象外）</div>';return;}
+  const places=repairPlaceList(document.getElementById('e_subCategory').value);
+  const sel='padding:5px 8px;border:1px solid var(--border2);border-radius:6px;font-size:12px;font-family:\'Noto Sans JP\',sans-serif;background:var(--surface);color:var(--text);';
+  box.innerHTML=items.map(item=>{
+    if(!repairWork[item]||!repairWork[item].length)repairWork[item]=[{place:'',other:'',level:''}];
+    const rows=repairWork[item].map((r,i)=>{
+      const opts=['<option value="">施工箇所を選択</option>'].concat(places.concat(places.includes(r.place)||!r.place?[]:[r.place]).map(p=>`<option value="${sdEsc(p)}" ${r.place===p?'selected':''}>${sdEsc(p)}</option>`)).join('');
+      const lv=['<option value="">程度</option>'].concat(REPAIR_LEVELS.map(l=>`<option value="${l}" ${r.level===l?'selected':''}>${l}</option>`)).join('');
+      return `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;">
+        <select class="sd-place" data-item="${sdEsc(item)}" data-i="${i}" style="${sel}">${opts}</select>
+        <input type="text" class="sd-other" data-item="${sdEsc(item)}" data-i="${i}" value="${sdEsc(r.other)}" placeholder="施工箇所を入力" style="${sel}width:140px;${r.place==='その他'?'':'display:none;'}">
+        <select class="sd-level" data-item="${sdEsc(item)}" data-i="${i}" style="${sel}" title="施工前の程度">${lv}</select>
+        <button type="button" class="sd-del" data-item="${sdEsc(item)}" data-i="${i}" title="この施工箇所を削除" style="border:none;background:transparent;color:var(--text3);font-size:15px;cursor:pointer;padding:0 4px;">×</button>
+      </div>`;
+    }).join('');
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:10px 12px;margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text);">${sdEsc(item)}</div>${rows}
+      <button type="button" class="sd-add" data-item="${sdEsc(item)}" style="margin-top:8px;padding:3px 10px;border:1px dashed var(--border2);border-radius:6px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;">＋ 施工箇所を追加</button>
+    </div>`;
+  }).join('');
+}
+(function(){
+  const box=document.getElementById('e_sdRepair');
+  const row=el=>{const a=repairWork[el.dataset.item];return a?a[Number(el.dataset.i)]:null;};
+  box.addEventListener('change',e=>{
+    const el=e.target,r=row(el);if(!r)return;
+    if(el.classList.contains('sd-place')){r.place=el.value;if(r.place!=='その他')r.other='';const o=el.parentNode.querySelector('.sd-other');o.style.display=r.place==='その他'?'':'none';if(r.place==='その他')o.focus();}
+    if(el.classList.contains('sd-level'))r.level=el.value;
+  });
+  box.addEventListener('input',e=>{if(e.target.classList.contains('sd-other')){const r=row(e.target);if(r)r.other=e.target.value;}});
+  box.addEventListener('click',e=>{
+    const el=e.target;
+    if(el.classList.contains('sd-add')){(repairWork[el.dataset.item]=repairWork[el.dataset.item]||[]).push({place:'',other:'',level:''});renderRepairWork();}
+    if(el.classList.contains('sd-del')){const a=repairWork[el.dataset.item];if(a){a.splice(Number(el.dataset.i),1);renderRepairWork();}}
+  });
+})();
+// 保存用：チェック中の項目で、施工箇所が入っている行だけ
+function collectRepairWork(){
+  const items=getCheckedRepairs().filter(x=>x&&x!=='無し');
+  const out=items.map(item=>({item,places:(repairWork[item]||[])
+    .filter(r=>r.place&&(r.place!=='その他'||String(r.other||'').trim()))
+    .map(r=>({place:r.place,other:r.place==='その他'?String(r.other).trim():'',level:r.level||''}))}))
+    .filter(x=>x.places.length);
+  return out.length?out:null;
+}
+function collectHumanFactors(){
+  const factors=getCheckedHumanFactors(),note=document.getElementById('e_sdHumanNote').value.trim();
+  return (factors.length||note)?{factors,note}:null;
+}
+// ②のリペア詳細から④のリペア内容へ移動
+function goRepairWork(){
+  switchStep(4);
+  setTimeout(()=>{const el=document.getElementById('e_sdRepairLabel');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},50);
+}
+// AI仮説：売れた要因をAIが分析（押したときだけAIを使う）。結果はその場で保存する
+async function analyzeSaleFactors(){
+  const st=document.getElementById('e_sdAiStatus'),btn=document.getElementById('e_sdAiBtn');
+  const s=saleSnapshot(),m=saleMetrics(s);
+  if(!m.sold){st.className='status-msg err';st.textContent='売却日と売上金額（③）を入力してから押してください';return;}
+  btn.disabled=true;st.className='status-msg';st.textContent='AIが分析中…';
+  try{
+    const v=id=>{const e=document.getElementById(id);return e?String(e.value||'').trim():'';};
+    const rw=collectRepairWork()||[];
+    const trend=trendCache||sdParse(currentEditData&&currentEditData.trend_data);
+    const lines=[
+      'あなたは中古ブランド品のEC販売アナリスト。次の商品が「なぜ売れたか」の仮説を立てる。',
+      '要因は次の中から当てはまるものを1〜4個選ぶ（この表記のまま）：'+SALE_FACTORS.join('／'),
+      'noteは仮説を一言で（40字以内）。根拠の数字があれば入れる。',
+      '商品：'+[v('e_brandName'),v('e_itemShape'),v('e_freeWord'),v('e_subCategory')].filter(Boolean).join(' '),
+      '状態：ランク'+(v('e_conditionRank')||'不明')+'／気になる状態：'+(v('e_conditionInputAI')||'なし'),
+      '価格：仕入れ'+(s.purchasePrice!=null?'¥'+s.purchasePrice:'不明')+'／相場 下振れ'+(s.low!=null?'¥'+s.low:'-')+'・中央値'+(s.mid!=null?'¥'+s.mid:'-')+'・上振れ'+(s.high!=null?'¥'+s.high:'-')+'／売却¥'+s.revenue+(m.rate!=null?'（中央値比'+(m.rate>0?'+':'')+m.rate+'%）':''),
+      '期間：仕入れ→売却'+(m.daysFromPurchase!=null?m.daysFromPurchase+'日':'不明')+'／出品→売却'+(m.daysFromListing!=null?m.daysFromListing+'日':'不明')+'／売却月'+parseInt(s.soldDate.slice(5,7))+'月',
+      '販路：'+(s.platform||'不明')+'／売れ先：'+(s.soldTo||'不明'),
+      'リペア：'+(rw.length?rw.map(x=>x.item+'（'+x.places.map(p=>(p.place==='その他'?p.other:p.place)+(p.level?':'+p.level:'')).join('、')+'）').join('／'):(getCheckedRepairs().join('・')||'なし')),
+      trend&&(trend.hotKeywords||trend.priceMid)?'トレンド：注目キーワード '+(trend.hotKeywords||[]).join('・')+'／相場中央 ¥'+(trend.priceMid||'-'):'',
+      'JSON書式の厳守：値の中では半角のダブルクォートを使わない。JSON以外は書かない。',
+      'JSONのみ返答：{"factors":[],"note":""}'
+    ].filter(Boolean).join('\n');
+    const photos=((currentEditData&&Array.isArray(currentEditData.listing_photo_urls))?currentEditData.listing_photo_urls:[]).filter(Boolean).slice(0,AI_MAX_IMAGES);
+    const content=photos.length?[...photos.map(u=>({type:'image',source:{type:'url',url:u}})),{type:'text',text:lines}]:lines;
+    const res=await fetch(CLAUDE_PROXY,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await getAccessToken())},
+      body:JSON.stringify({model:AI_MODEL,max_tokens:600,messages:[{role:'user',content}]})});
+    const {data,raw}=await readJsonSafe(res);
+    if(!data||!data.content)throw new Error(describeApiError(data,raw));
+    const r=parseAiJson(data.content.filter(i=>i.type==='text').map(i=>i.text||'').join(''));
+    const factors=(Array.isArray(r.factors)?r.factors:[]).map(x=>String(x).trim()).filter(x=>SALE_FACTORS.includes(x));
+    if(!factors.length)throw new Error('AIの回答から要因を読み取れませんでした。もう一度押してください');
+    saleFactorsAi={factors:[...new Set(factors)].slice(0,4),note:String(r.note||'').trim().slice(0,80),at:new Date().toISOString()};
+    renderAiFactors();
+    const {error}=await updateProductRow(editingId,{sale_factors_ai:saleFactorsAi});
+    if(error){st.className='status-msg err';st.textContent='分析はできましたが、保存に失敗しました：'+error.message;}
+    else{if(currentEditData)currentEditData.sale_factors_ai=saleFactorsAi;st.className='status-msg ok';st.textContent='AI仮説を作成して保存しました';}
+  }catch(e){st.className='status-msg err';st.textContent='エラー: '+e.message;}
+  btn.disabled=false;
 }
 
 // ==================== 価格計算 ====================
@@ -2985,6 +3212,9 @@ async function saveStage(step,nextStep){
     // （売上だけ・棚番だけの編集で勝手に入金にならないようにする）
     if(rev&&document.getElementById('e_soldDate').value){const ns=advanceStatus(currentEditData&&currentEditData.status,'入金');if(ns)updates.status=ns;}
   }
+  if(step===4){
+    updates={repair_work:collectRepairWork(),sale_factors_human:collectHumanFactors()};
+  }
   // ===== 差分保存 =====
   // currentEditDataと比較し、実際に変わった項目だけをDBへ送る。
   // 写真URL・status・利益系の自動計算値は「常に意図して更新する項目」なので差分判定から除外（常に送る）。
@@ -2998,7 +3228,11 @@ async function saveStage(step,nextStep){
       const after=updates[k];
       // null/空文字/undefined を同一視（型ゆれによる誤検知を防ぐ）
       const norm=v=>(v===undefined||v===null||v==='')?'':v;
-      if(norm(before)!==norm(after))payload[k]=after;
+      const isObj=v=>v!==null&&typeof v==='object';
+      if(isObj(before)||isObj(after)){
+        let b=before;if(typeof b==='string'){try{b=JSON.parse(b);}catch(e){}}
+        if(stableJson(b==null?null:b)!==stableJson(after==null?null:after))payload[k]=after;
+      }else if(norm(before)!==norm(after))payload[k]=after;
     });
   }
   // 変更が一切なければDBアクセスせず終了
@@ -3185,6 +3419,7 @@ async function openEdit(id){
   set('e_brandName',data.brand_name);set('e_freeWord',data.free_word);set('e_shelfNo',data.shelf_no);
   set('e_listingDate',data.listing_date);
   setCheckedRepairs(data.repair_detail_checks);
+  loadSaleData(data);   // ④ 販売データ（リペア内容・売れた要因）
   set('e_priceHigh',data.price_high);set('e_priceLow',data.price_low);set('e_priceMid',data.price_mid);set('e_priceHighMid',data.price_high_mid);set('e_priceLowMid',data.price_low_mid);
   set('e_productTitle',data.product_title);set('e_keywords',data.keywords);set('e_keywordsCopy',data.keywords_copy);set('e_productDescription',data.product_description);set('e_repairDetail',data.repair_detail);
   set('e_soldDate',data.sold_date);set('e_soldPlatform',data.sold_platform);set('e_soldTo',data.sold_to);set('e_revenue',data.revenue);set('e_shippingCost',data.shipping_cost);
