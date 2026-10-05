@@ -1403,8 +1403,10 @@ const REP_WATCH=['電池交換','外装ポリッシュ','全体クリーニン�
 const REP_APPAREL=['金属補修','革補修','縫い補修','保護クリーム塗布','揉み洗い','染み抜き','毛玉取り','ハウスクリーニング','無し'];
 const REP_SHOES=['清掃','全面塗装','部分塗装','糸飛び縫製補修','コバ補修','金具のくすみ除去','メッキ加工','生地接着','革の毛羽立ち処理','トップリフト交換','靴紐交換','ファスナー交換','ゴム部分交換','無し'];
 const REP_ACCESSORY=['超音波洗浄','金具のくすみ除去','メッキ加工','清掃','部分塗装','全面塗装','ストーン取り付け','無し'];
+// 財布・バッグのみ「コーヒー粉による消臭処理」を追加（Lark依頼 2026-10-04）
+const REP_WALLET_BAG=(function(){const a=REP_LEATHER.slice();a.splice(a.indexOf('無し'),0,'コーヒー粉による消臭処理');return a;})();
 const REPAIR_MAP={
-  '財布':REP_LEATHER,'バッグ':REP_LEATHER,'ベルト':REP_LEATHER,'その他小物':REP_LEATHER,
+  '財布':REP_WALLET_BAG,'バッグ':REP_WALLET_BAG,'ベルト':REP_LEATHER,'その他小物':REP_LEATHER,
   'サングラス/メガネ':REP_SUNGLASS,
   '腕時計':REP_WATCH,
   'ファッション小物':REP_APPAREL,'アパレル':REP_APPAREL,'帽子':REP_APPAREL,'ネクタイ':REP_APPAREL,
