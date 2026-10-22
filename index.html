@@ -1454,7 +1454,8 @@ const MAT_LEATHER=['牛革（カウレザー）','牛革（カーフスキン）
 const MAT_SUNGLASS=['チタン','メタル','プラスチック','ウッド','その他','不明'];
 const MAT_WATCH=['ステンレス','チタン','樹脂（レジン）','セラミック','カーボン','アルミニウム','ゴールド10金','ゴールド18金','ラバー（シリコン）','シルバー925','PVDコーティング','サファイアガラス','ミネラルガラス','キャンバス','その他','不明'];
 const MAT_APPAREL=['コットン（綿）','リネン（麻）','シルク（絹）','ポリエステル','ポリウレタン','キュプラ','ウール（毛、羊毛含む）','レーヨン','カシミア','アルパカ','アンゴラ','モヘア','ラビット（ウサギ）','フォックス（きつね）','ラクーン（たぬき）','ナイロン','ポリノジック','リヨセル','アセテート','トリアセテート','プロミックス','アクリル','牛革','羊革','山羊革','鹿革','ダウン','フェザー','不明'];
-const MAT_ACCESSORY=['真鍮','チタン','シルバー925','シルバー1000','シルバー950','ステンレス','ゴールド10金','ゴールド18金','プラチナ','本革','PVC','ナイロン','ポリエステル','キャンバス','牛革（カウレザー）','馬革（ホースハイド）','豚革（ピッグスキン）','山羊革（ゴートスキン）','ワニ（クロコダイルレザー）','ウール（毛、羊毛含む）','トカゲ（リザードレザー）','蛇（パイソンレザー）','ダチョウ（オーストリッチレザー）','鹿革（ディアスキンレザー）','ミンク','エキゾチックレザー','エナメル革（パテントレザー）','合皮','その他','不明'];
+const MAT_ACCESSORY=['真鍮','チタン','シルバー925','シルバー1000','シルバー950','ステンレス','メタル',   // メタル：Lark依頼 2026-10-22
+ 'ゴールド10金','ゴールド18金','プラチナ','本革','PVC','ナイロン','ポリエステル','キャンバス','牛革（カウレザー）','馬革（ホースハイド）','豚革（ピッグスキン）','山羊革（ゴートスキン）','ワニ（クロコダイルレザー）','ウール（毛、羊毛含む）','トカゲ（リザードレザー）','蛇（パイソンレザー）','ダチョウ（オーストリッチレザー）','鹿革（ディアスキンレザー）','ミンク','エキゾチックレザー','エナメル革（パテントレザー）','合皮','その他','不明'];
 // 財布・バッグのみ スエードを追加（Lark依頼 2026-09-17）
 const MAT_LEATHER_BAG=(function(){const a=MAT_LEATHER.slice();a.splice(a.indexOf('その他'),0,'スエード（スウェード）');return a;})();
 const MATERIAL_MAP={
@@ -2286,7 +2287,27 @@ function pieModeLabel(key){
   const mo=pieMonth[key]||String(now.getMonth()+1).padStart(2,'0');
   return yr+'年'+parseInt(mo)+'月';
 }
-const PIE_COLORS=['#3895da','#34c783','#ffab40','#8b65e6','#ff6378','#36bdd4','#f7a34b','#5dd4b0','#a78bfa'];
+// グラフの配色（アプリの緑を基調に、落ち着いたトーンでそろえる）。
+// 色の見分けやすさ（色覚の違いを含む）を検証ツールで確認済みの組み合わせ・並び順。並び順も含めて変えないこと
+const CHART={green:'#2d7d4f',blue:'#3d6fb0',ochre:'#b9761a',teal:'#13958c',gold:'#9c7a14',plum:'#7a5aa8',rose:'#b8505a',
+  other:'#a3a29a',negative:'#c42b2b',gap:'#f2f2f0'};
+// 意味ごとの色（どのグラフでも同じ意味は同じ色）：売上・売却＝緑／出品＝青／仕入れ＝黄土
+const PIE_COLORS=[CHART.green,CHART.blue,CHART.ochre,CHART.teal,CHART.gold,CHART.plum,CHART.rose];
+const PIE_OTHER='その他（少数）';
+// 円グラフの色は「項目」に固定する（期間を切り替えても同じ項目は同じ色）。
+// 全期間の件数が多い順に7つまで色を割り当て、それ以外は「その他（少数）」にまとめてグレーにする
+function pieSlots(field,blank,counts){
+  const all={};chartAllData.forEach(d=>{const k=d[field]||blank;all[k]=(all[k]||0)+1;});
+  const rank=Object.keys(all).sort((a,b)=>all[b]-all[a]||a.localeCompare(b,'ja')).slice(0,PIE_COLORS.length);
+  const labels=[],vals=[],colors=[];let other=0;
+  rank.forEach((k,i)=>{if(counts[k]){labels.push(k);vals.push(counts[k]);colors.push(PIE_COLORS[i]);}});
+  Object.keys(counts).forEach(k=>{if(!rank.includes(k))other+=counts[k];});
+  if(other){labels.push(PIE_OTHER);vals.push(other);colors.push(CHART.other);}
+  return {labels,vals,colors};
+}
+const pieDs=(sl)=>({data:sl.vals,backgroundColor:sl.colors,borderWidth:2,borderColor:CHART.gap,hoverOffset:4});
+// 単一系列の棒グラフは凡例を出さない（グラフの見出しが系列名を示している）
+Chart.register({id:'autoLegend',beforeInit(chart){const lg=chart.options&&chart.options.plugins&&chart.options.plugins.legend;if(lg&&chart.config.type==='bar'&&chart.data.datasets.length<2)lg.display=false;}});
 
 function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
 
@@ -2371,7 +2392,7 @@ function drawSourceProfit(){
     type:'bar',
     data:{labels:rows.map(r=>r.src),datasets:[{
       label:'利益率',data:rows.map(r=>Math.round(r.rate*10)/10),
-      backgroundColor:rows.map(r=>r.rate<0?'rgba(255,99,120,0.85)':'rgba(52,199,131,0.85)'),borderRadius:3
+      backgroundColor:rows.map(r=>r.rate<0?CHART.negative:CHART.green),borderRadius:4
     }]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},
@@ -2407,10 +2428,10 @@ function drawStatusAmounts(){
   if(!labels.length)return;
   chartInstances[id]=new Chart(document.getElementById(id).getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'下振れ値計',data:labels.map(s=>sums[s].low),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
-      {label:'中央値計',data:labels.map(s=>sums[s].mid),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
-      {label:'売却金額計(送料なし)',data:labels.map(s=>sums[s].rev),backgroundColor:'rgba(255,171,64,0.85)',borderRadius:3},
-      {label:'仕入れ価格計',data:labels.map(s=>sums[s].cost),backgroundColor:'rgba(139,101,230,0.85)',borderRadius:3},
+      {label:'下振れ値計',data:labels.map(s=>sums[s].low),backgroundColor:CHART.teal,borderRadius:4},
+      {label:'中央値計',data:labels.map(s=>sums[s].mid),backgroundColor:CHART.plum,borderRadius:4},
+      {label:'売却金額計(送料なし)',data:labels.map(s=>sums[s].rev),backgroundColor:CHART.green,borderRadius:4},
+      {label:'仕入れ価格計',data:labels.map(s=>sums[s].cost),backgroundColor:CHART.ochre,borderRadius:4},
     ]},options:{...barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString()),interaction:{mode:'index',intersect:false}}
   });
   });
@@ -2443,8 +2464,8 @@ function drawBarListingSold(){
   destroyChart('chartListingSold');
   chartInstances['chartListingSold']=new Chart(document.getElementById('chartListingSold').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'出品数',data:mv.map(v=>v.listingCount),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
-      {label:'売却数',data:mv.map(v=>v.soldCount),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
+      {label:'出品数',data:mv.map(v=>v.listingCount),backgroundColor:CHART.blue,borderRadius:4},
+      {label:'売却数',data:mv.map(v=>v.soldCount),backgroundColor:CHART.green,borderRadius:4},
     ]},options:barOpts(v=>v+'点')
   });
 }
@@ -2453,7 +2474,7 @@ function drawBarPurchaseTotal(){
   const m=getMonthlyBase(yr);const labels=MONTH_LABELS;const mv=MONTH_KEYS.map(k=>m[k]);
   destroyChart('chartPurchaseTotal');
   chartInstances['chartPurchaseTotal']=new Chart(document.getElementById('chartPurchaseTotal').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:mv.map(v=>v.purchaseSum),backgroundColor:'rgba(139,101,230,0.85)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'仕入れ合計',data:mv.map(v=>v.purchaseSum),backgroundColor:CHART.ochre,borderRadius:4}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -2463,9 +2484,9 @@ function drawBarPurchaseStats(){
   destroyChart('chartPurchaseStats');
   chartInstances['chartPurchaseStats']=new Chart(document.getElementById('chartPurchaseStats').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
-      {label:'平均',data:mv.map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:3},
-      {label:'最大',data:mv.map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:'rgba(255,99,120,0.85)',borderRadius:3},
-      {label:'最小',data:mv.map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:'rgba(52,199,131,0.85)',borderRadius:3},
+      {label:'平均',data:mv.map(v=>v.purchasePrices.length?Math.round(v.purchasePrices.reduce((a,b)=>a+b,0)/v.purchasePrices.length):0),backgroundColor:CHART.ochre,borderRadius:4},
+      {label:'最大',data:mv.map(v=>v.purchasePrices.length?Math.max(...v.purchasePrices):0),backgroundColor:CHART.plum,borderRadius:4},
+      {label:'最小',data:mv.map(v=>v.purchasePrices.length?Math.min(...v.purchasePrices):0),backgroundColor:CHART.teal,borderRadius:4},
     ]},options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -2474,7 +2495,7 @@ function drawBarAvgSale(){
   const m=getMonthlyBase(yr);const labels=MONTH_LABELS;const mv=MONTH_KEYS.map(k=>m[k]);
   destroyChart('chartAvgSale');
   chartInstances['chartAvgSale']=new Chart(document.getElementById('chartAvgSale').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:mv.map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:'rgba(255,171,64,0.85)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'平均売却金額',data:mv.map(v=>v.soldCount?Math.round(v.revenueSum/v.soldCount):0),backgroundColor:CHART.green,borderRadius:4}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -2484,11 +2505,11 @@ function drawStatusPie(){
   const target=filterByPieMode(chartAllData,'status','created_at');
   const counts={};
   target.forEach(d=>{const st=d.status||'不明';counts[st]=(counts[st]||0)+pieVal(d);});
-  const labels=Object.keys(counts);const vals=Object.values(counts);
+  const sl=pieSlots('status','不明',counts);const labels=sl.labels,vals=sl.vals;
   destroyChart('chartStatusPie');
   if(!vals.length)return;
   chartInstances['chartStatusPie']=new Chart(document.getElementById('chartStatusPie').getContext('2d'),{
-    type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},options:pieOpts({type:'status'},pieValueMode)
+    type:'doughnut',data:{labels,datasets:[pieDs(sl)]},options:pieOpts({type:'status'},pieValueMode)
   });
 }
 function drawPlatformMonthPie(){
@@ -2496,11 +2517,11 @@ function drawPlatformMonthPie(){
   const target=filterByPieMode(chartAllData,'platform','sold_date');
   const counts={};
   target.forEach(d=>{const pf=d.sold_platform||'不明';counts[pf]=(counts[pf]||0)+pieVal(d);});
-  const labels=Object.keys(counts);const vals=Object.values(counts);
+  const sl=pieSlots('sold_platform','不明',counts);const labels=sl.labels,vals=sl.vals;
   destroyChart('chartPlatformMonthPie');
   if(!vals.length)return;
   chartInstances['chartPlatformMonthPie']=new Chart(document.getElementById('chartPlatformMonthPie').getContext('2d'),{
-    type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},options:pieOpts({type:'platform'},pieValueMode)
+    type:'doughnut',data:{labels,datasets:[pieDs(sl)]},options:pieOpts({type:'platform'},pieValueMode)
   });
 }
 function drawDestPie(){
@@ -2509,11 +2530,11 @@ function drawDestPie(){
   const target=filterByPieMode(chartAllData,'dest','sold_date');
   const counts={};
   target.forEach(d=>{const t=d.sold_to||'不明';counts[t]=(counts[t]||0)+pieVal(d);});
-  const labels=Object.keys(counts);const vals=Object.values(counts);
+  const sl=pieSlots('sold_to','不明',counts);const labels=sl.labels,vals=sl.vals;
   destroyChart('chartDestPie');
   if(!vals.length)return;
   chartInstances['chartDestPie']=new Chart(document.getElementById('chartDestPie').getContext('2d'),{
-    type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:PIE_COLORS.slice(0,labels.length),borderWidth:1,borderColor:'#fff'}]},options:pieOpts({type:'soldTo'},pieValueMode)
+    type:'doughnut',data:{labels,datasets:[pieDs(sl)]},options:pieOpts({type:'soldTo'},pieValueMode)
   });
 }
 function barOpts(tickCb){
@@ -2555,7 +2576,7 @@ function drawHalfPie(){
   if(!firstHalf&&!secondHalf)return;
   chartInstances['chartHalfPie']=new Chart(document.getElementById('chartHalfPie').getContext('2d'),{
     type:'doughnut',
-    data:{labels:['1〜15日','16〜'+lastDay+'日'],datasets:[{data:[firstHalf,secondHalf],backgroundColor:['#3895da','#ffab40'],borderWidth:1,borderColor:'#fff'}]},
+    data:{labels:['1〜15日','16〜'+lastDay+'日'],datasets:[{data:[firstHalf,secondHalf],backgroundColor:[CHART.green,CHART.blue],borderWidth:2,borderColor:CHART.gap}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},
       tooltip:{callbacks:{label:c=>{const tot=c.dataset.data.reduce((a,b)=>a+b,0);return c.label+': ¥'+c.parsed.toLocaleString()+' ('+(tot?Math.round(c.parsed/tot*100):0)+'%)';}}}}}
   });
@@ -2568,12 +2589,12 @@ function drawCategoryPies(){
   // 大カテゴリ
   const mainCounts={};
   listing.forEach(d=>{const c=d.main_category||'未設定';mainCounts[c]=(mainCounts[c]||0)+pieVal(d);});
-  const mainLabels=Object.keys(mainCounts);const mainVals=Object.values(mainCounts);
+  const mainSl=pieSlots('main_category','未設定',mainCounts);const mainLabels=mainSl.labels,mainVals=mainSl.vals;
   destroyChart('chartMainCatPie');
   if(mainVals.length){
     chartInstances['chartMainCatPie']=new Chart(document.getElementById('chartMainCatPie').getContext('2d'),{
       type:'doughnut',
-      data:{labels:mainLabels,datasets:[{data:mainVals,backgroundColor:PIE_COLORS.slice(0,mainLabels.length),borderWidth:1,borderColor:'#fff'}]},
+      data:{labels:mainLabels,datasets:[pieDs(mainSl)]},
       options:pieOpts({type:'mainCat'},pieValueMode)
     });
   }
@@ -2581,12 +2602,12 @@ function drawCategoryPies(){
   // 中カテゴリ
   const subCounts={};
   listing.forEach(d=>{const c=d.sub_category||'未設定';subCounts[c]=(subCounts[c]||0)+pieVal(d);});
-  const subLabels=Object.keys(subCounts);const subVals=Object.values(subCounts);
+  const subSl=pieSlots('sub_category','未設定',subCounts);const subLabels=subSl.labels,subVals=subSl.vals;
   destroyChart('chartSubCatPie');
   if(subVals.length){
     chartInstances['chartSubCatPie']=new Chart(document.getElementById('chartSubCatPie').getContext('2d'),{
       type:'doughnut',
-      data:{labels:subLabels,datasets:[{data:subVals,backgroundColor:PIE_COLORS.slice(0,subLabels.length),borderWidth:1,borderColor:'#fff'}]},
+      data:{labels:subLabels,datasets:[pieDs(subSl)]},
       options:pieOpts({type:'subCat'},pieValueMode)
     });
   }
@@ -2602,6 +2623,7 @@ function pieOpts(drill,mode){
     onClick:(e,els,chart)=>{
       if(!drill||!els||!els.length)return;
       const label=chart.data.labels[els[0].index];
+      if(label===PIE_OTHER)return;
       drillToProducts(drill,label);
     },
     onHover:(e,els)=>{ if(e&&e.native&&e.native.target) e.native.target.style.cursor=(drill&&els.length)?'pointer':'default'; },
@@ -3627,7 +3649,7 @@ function drawDashMonthlyChart(){
   const labels=MONTH_LABELS;
   destroyChart('dashMonthlyChart');
   chartInstances['dashMonthlyChart']=new Chart(document.getElementById('dashMonthlyChart').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'売上',data:MONTH_KEYS.map(k=>m[k]),backgroundColor:'rgba(45,125,79,0.85)',borderRadius:3}]},
+    type:'bar',data:{labels,datasets:[{label:'売上',data:MONTH_KEYS.map(k=>m[k]),backgroundColor:CHART.green,borderRadius:4}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -3641,7 +3663,7 @@ function drawDashDailyChart(){
   const labels=Object.keys(m).map(k=>k+'日');
   destroyChart('dashDailyChart');
   chartInstances['dashDailyChart']=new Chart(document.getElementById('dashDailyChart').getContext('2d'),{
-    type:'bar',data:{labels,datasets:[{label:'売上',data:Object.values(m),backgroundColor:'rgba(56,149,218,0.85)',borderRadius:2}]},
+    type:'bar',data:{labels,datasets:[{label:'売上',data:Object.values(m),backgroundColor:CHART.green,borderRadius:3}]},
     options:barOpts(v=>v>=10000?'¥'+(v/10000).toFixed(1)+'万':'¥'+v.toLocaleString())
   });
 }
@@ -3757,22 +3779,27 @@ function buildStockTable(){
   const today=new Date().toISOString().slice(0,10);
   const months=stockMonths();
   let rows='';
-  let curYear=null, yc={openCnt:0,openAmt:0,closeCnt:0,closeAmt:0,sold:0,first:true};
+  // 年の行は全項目「月平均」（Lark依頼 2026-10-22）。
+  // 以前は期首=最初の月・期末=最後の月・売却点数=合計・回転率=合計÷平均在庫で、回転率が1000%超になっていた。
+  // 月末を迎えていない月（確定前）は数字が途中のため平均に含めない（その年に確定月が無い場合のみ含める）
+  let curYear=null, ym2=[];
+  const avgOf=(arr,k)=>{const v=arr.map(m=>m[k]).filter(x=>x!==null&&x!==undefined);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
   const flushYear=()=>{
-    if(curYear===null)return;
-    const avgCnt=(yc.openCnt+yc.closeCnt)/2;
-    const avgAmt=(yc.openAmt+yc.closeAmt)/2;
-    const tr=avgCnt?(yc.sold/avgCnt*100):null;
-    rows+=`<tr class="row-year"><td class="label">${curYear}年 合計</td>`
-      +`<td>${yc.openCnt}</td><td>${y(yc.openAmt)}</td>`
-      +`<td>${yc.closeCnt}</td><td>${y(yc.closeAmt)}</td>`
-      +`<td>${avgCnt.toFixed(1)}</td><td>${y(avgAmt)}</td>`
-      +`<td>${yc.sold}</td>`
+    if(curYear===null||!ym2.length)return;
+    const done=ym2.filter(m=>!m.pending), base=done.length?done:ym2;
+    const n=x=>x===null?'-':(Math.round(x*10)/10).toLocaleString();
+    const tr=avgOf(base,'turnover');
+    const note=`<span style="font-size:9px;color:var(--text3);">（${base.length}か月${done.length<ym2.length&&done.length?'・確定前の月を除く':''}）</span>`;
+    rows+=`<tr class="row-year"><td class="label">${curYear}年 月平均${note}</td>`
+      +`<td>${n(avgOf(base,'openCnt'))}</td><td>${y(avgOf(base,'openAmt'))}</td>`
+      +`<td>${n(avgOf(base,'closeCnt'))}</td><td>${y(avgOf(base,'closeAmt'))}</td>`
+      +`<td>${n(avgOf(base,'avgCnt'))}</td><td>${y(avgOf(base,'avgAmt'))}</td>`
+      +`<td>${n(avgOf(base,'sold'))}</td>`
       +`<td class="${tr!==null?'pos':''}">${tr!==null?tr.toFixed(1)+'%':'-'}</td></tr>`;
   };
   months.forEach(ym=>{
     const yr=ym.slice(0,4), mo=ym.slice(5,7);
-    if(curYear!==yr){ flushYear(); curYear=yr; yc={openCnt:0,openAmt:0,closeCnt:0,closeAmt:0,sold:0,first:true}; }
+    if(curYear!==yr){ flushYear(); curYear=yr; ym2=[]; }
     const lastDay=new Date(parseInt(yr),parseInt(mo),0).getDate();
     const monthEnd=`${yr}-${mo}-${String(lastDay).padStart(2,'0')}`;
     // 期首＝前月末時点の在庫（繰越）
@@ -3790,9 +3817,8 @@ function buildStockTable(){
     const turnover=avgCnt?(sold/avgCnt*100):null;
     const isFuture=`${yr}-${mo}-01`>today;
     if(isFuture)return;
-    // 年合計：期首は年内最初の月、期末は年内最後の月の値を採用
-    if(yc.first){ yc.openCnt=open.cnt; yc.openAmt=open.amt; yc.first=false; }
-    yc.closeCnt=close.cnt; yc.closeAmt=close.amt; yc.sold+=sold;
+    // 年の月平均用に、この月の値を控える
+    ym2.push({openCnt:open.cnt,openAmt:open.amt,closeCnt:close.cnt,closeAmt:close.amt,avgCnt,avgAmt,sold,turnover,pending:monthEnd>today});
     const pending=monthEnd>today?'<span style="font-size:9px;color:var(--text3);">（確定前）</span>':'';
     rows+=`<tr class="row-month"><td class="label">${yr}年${parseInt(mo)}月${pending}</td>`
       +`<td>${open.cnt}</td><td>${y(open.amt)}</td>`
